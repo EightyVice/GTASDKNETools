@@ -45,6 +45,7 @@ namespace GTASDK.Generator
 
         public TypeGraph GetTypeGraph(string typeName, string input)
         {
+            Debug.WriteLine($"Processing type {typeName} in module {Path.GetFileName(_rootDirectory)}");
             var serializer = new Serializer();
             var structure = serializer.Deserialize<IDictionary<string, object>>(input);
 
