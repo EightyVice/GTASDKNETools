@@ -33,7 +33,7 @@ namespace GTASDK.Generator
                 return cachedTypeGraph;
             }
 
-            var targetFile = Path.Combine(_rootDirectory, name, ".yml");
+            var targetFile = Path.Combine(_rootDirectory, name + ".yml");
             if (!File.Exists(targetFile))
             {
                 throw new FileNotFoundException("Did not find .yml template for type graph", targetFile);
