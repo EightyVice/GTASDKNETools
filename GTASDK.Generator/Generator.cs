@@ -125,6 +125,7 @@ namespace GTASDK.Generator
         public string GraphToString()
         {
             return $@"using System;
+using System.Runtime.CompilerServices;
 
 namespace {Namespace}
 {{

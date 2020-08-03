@@ -132,8 +132,8 @@ namespace GTASDK.Generator
             return $@"
                 {Visibility} IntPtr {Name}
                 {{
-                    get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -189,8 +189,8 @@ namespace GTASDK.Generator
                 return $@"
                     {Visibility} Span<{ParserType.TypeMapsTo ?? Type}> {Name}
                     {{
-                        get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
-                        set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)] get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)] set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
                     }}
                 ";
             }
@@ -204,8 +204,8 @@ namespace GTASDK.Generator
                         // {Type} at offset 0x{offset:X}
                         {Visibility} IntPtr {Name}
                         {{
-                            get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                            set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                         }}
                     ";
                 }
@@ -214,8 +214,8 @@ namespace GTASDK.Generator
                     // {Type} at offset 0x{offset:X}
                     {Visibility} {type.TypeMapsTo ?? Type} {Name}
                     {{
-                        get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
-                        set => throw new InvalidOperationException(""NOT DONE YET"");
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
+                        [MethodImpl(MethodImplOptions.AggressiveInlining)] set => throw new InvalidOperationException(""NOT DONE YET"");
                     }}
                 ";
             }
@@ -224,8 +224,8 @@ namespace GTASDK.Generator
                 // {Type} at offset 0x{offset:X}
                 {Visibility} {ParserType.TypeMapsTo ?? Type} {Name}
                 {{
-                    get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -289,8 +289,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} bool {name}
                         {{
-                            get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
-                            set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
                         }}
                     ");
                 }
@@ -299,8 +299,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} {ParserType.TypeMapsTo ?? Type} {name}
                         {{
-                            get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
-                            set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
                         }}
                     ");
                 }
