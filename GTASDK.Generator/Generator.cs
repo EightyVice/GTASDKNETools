@@ -130,6 +130,9 @@ namespace {Namespace}
 {{
     public partial class {Name}
     {{
+        /// <summary>Size of this type in native code, in bytes.</summary>
+        public const uint _Size = 0x{Size:X}U;
+
 {FieldsToString(4, 2)}
     }}
 }}";
