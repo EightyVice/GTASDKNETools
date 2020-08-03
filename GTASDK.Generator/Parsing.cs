@@ -6,9 +6,16 @@ using System.Threading.Tasks;
 
 namespace GTASDK.Generator
 {
-    internal static class Parsing
+    public class Parsing
     {
-        public static Field ParseComplexField(Dictionary<object, object> dict)
+        private readonly TypeCache _typeCache;
+
+        public Parsing(TypeCache typeCache)
+        {
+            _typeCache = typeCache;
+        }
+
+        public Field ParseComplexField(Dictionary<object, object> dict)
         {
             var entryKvp = dict.Single();
             var instruction = (string)entryKvp.Key;
@@ -24,7 +31,7 @@ namespace GTASDK.Generator
             }
         }
 
-        public static Field ParseBitfield(List<object> data)
+        public Field ParseBitfield(List<object> data)
         {
             // Type of the bitfield members
             string type = null;
@@ -68,10 +75,10 @@ namespace GTASDK.Generator
                 throw new ArgumentNullException(nameof(type), "A bitfield must have a type specified");
             }
 
-            return new BitfieldField(type, bitfieldBits);
+            return new BitfieldField(_typeCache, type, bitfieldBits);
         }
 
-        public static Field ParseUnion(IEnumerable<object> data)
+        public Field ParseUnion(IEnumerable<object> data)
         {
             var unionElements = new List<AlignedField>();
             foreach (List<object> unionElement in data)
@@ -82,20 +89,20 @@ namespace GTASDK.Generator
                         $"Union must be a tuple of [type, name], but had too many or too few elements: {string.Join(",", unionElement)}");
                 }
 
-                unionElements.Add(new AlignedField((string)unionElement[0], (string)unionElement[1]));
+                unionElements.Add(new AlignedField(_typeCache, (string)unionElement[0], (string)unionElement[1]));
             }
 
             return new UnionField(unionElements);
         }
 
-        public static Field ParseRegularField(IReadOnlyList<object> list)
+        public Field ParseRegularField(IReadOnlyList<object> list)
         {
             return list.Count == 3
-                ? new AlignedField((string)list[1], (string)list[2], (string)list[0] == "private" ? Visibility.@private : Visibility.@public)
-                : new AlignedField((string)list[0], (string)list[1]);
+                ? new AlignedField(_typeCache, (string)list[1], (string)list[2], (string)list[0] == "private" ? Visibility.@private : Visibility.@public)
+                : new AlignedField(_typeCache, (string)list[0], (string)list[1]);
         }
 
-        public static Field ParseStringDescriptor(string str)
+        public Field ParseStringDescriptor(string str)
         {
             if (str == "vtable")
             {
@@ -106,7 +113,7 @@ namespace GTASDK.Generator
         }
     }
 
-    internal abstract class Field
+    public abstract class Field
     {
         public abstract uint Size { get; }
         public virtual string Name { get; protected set; }
@@ -115,9 +122,9 @@ namespace GTASDK.Generator
         public abstract string Emit(uint offset);
     }
 
-    internal sealed class VTableField : Field
+    public sealed class VTableField : Field
     {
-        public override uint Size { get; } = Program.Pointer.Size;
+        public override uint Size { get; } = Types.Pointer.Size;
         public override string Name => "_vtable";
         public override Visibility Visibility => Visibility.@internal;
         public override string Emit(uint offset)
@@ -125,20 +132,23 @@ namespace GTASDK.Generator
             return $@"
                 {Visibility} IntPtr {Name}
                 {{
-                    get => {Program.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    set => {Program.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
     }
 
-    internal abstract class TypedField : Field
+    public abstract class ComplexTypedField : Field
     {
+        protected TypeCache TypeCache { get; }
         public string Type { get; }
         public bool IsPointer { get; }
         public uint? InlineArrayLength { get; }
 
-        protected TypedField(string type)
+        protected ParserType ParserType => TypeCache[Type];
+
+        protected ComplexTypedField(TypeCache typeCache, string type)
         {
             if (type.EndsWith("*"))
             {
@@ -154,20 +164,22 @@ namespace GTASDK.Generator
                 type = type.Substring(0, sizeStartingIndex - 1);
             }
 
+            TypeCache = typeCache;
             Type = type;
         }
     }
 
-    internal sealed class AlignedField : TypedField
+    public sealed class AlignedField : ComplexTypedField
     {
         public override uint Size => BaseSize * (InlineArrayLength ?? 1);
-        private uint BaseSize => IsPointer ? Program.Pointer.Size : Program.Types[Type].Size;
+        private uint BaseSize => IsPointer ? Types.Pointer.Size : TypeCache[Type].Size;
 
-        public AlignedField(string type, string name, Visibility visibility = Visibility.@public) : base(type)
+        public AlignedField(TypeCache typeCache, string type, string name, Visibility visibility = Visibility.@public) : base(typeCache, type)
         {
             Name = name;
             Visibility = visibility;
         }
+
         public override string Emit(uint offset)
         {
             if (InlineArrayLength.HasValue)
@@ -175,25 +187,25 @@ namespace GTASDK.Generator
                 // TODO: do we need to support both InlineArrayLength and IsPointer at the same time?
 
                 return $@"
-                    {Visibility} Span<{Program.Types[Type].TypeMapsTo ?? Type}> {Name}
+                    {Visibility} Span<{ParserType.TypeMapsTo ?? Type}> {Name}
                     {{
-                        get => Memory.GetSpan<{Program.Types[Type].TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
-                        set => Memory.WriteSpan<{Program.Types[Type].TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
+                        get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
+                        set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
                     }}
                 ";
             }
 
             if (IsPointer)
             {
-                if (!Program.Types.TryGetValue(Type, out var type))
+                if (!TypeCache.TryGetValue(Type, out var type))
                 {
                     return $@"
                         // PLACEHOLDER: Expose raw IntPtr
                         // {Type} at offset 0x{offset:X}
                         {Visibility} IntPtr {Name}
                         {{
-                            get => {Program.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                            set => {Program.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                            get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                            set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                         }}
                     ";
                 }
@@ -202,7 +214,7 @@ namespace GTASDK.Generator
                     // {Type} at offset 0x{offset:X}
                     {Visibility} {type.TypeMapsTo ?? Type} {Name}
                     {{
-                        get => {type.Template.Get(Program.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
+                        get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
                         set => throw new InvalidOperationException(""NOT DONE YET"");
                     }}
                 ";
@@ -210,16 +222,16 @@ namespace GTASDK.Generator
 
             return $@"
                 // {Type} at offset 0x{offset:X}
-                {Visibility} {Program.Types[Type].TypeMapsTo ?? Type} {Name}
+                {Visibility} {ParserType.TypeMapsTo ?? Type} {Name}
                 {{
-                    get => {Program.Types[Type].Template.Get($"BaseAddress + 0x{offset:X}")};
-                    set => {Program.Types[Type].Template.Set($"BaseAddress + 0x{offset:X}")};
+                    get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
     }
 
-    internal class UnionField : Field
+    public class UnionField : Field
     {
         public IReadOnlyList<Field> Elements { get; }
         public override uint Size { get; }
@@ -242,14 +254,18 @@ namespace GTASDK.Generator
         }
     }
 
-    internal sealed class BitfieldField : Field
+    public sealed class BitfieldField : Field
     {
+        private TypeCache TypeCache { get; }
         public string Type { get; }
         public IReadOnlyList<(string name, uint length)> BitfieldElements { get; }
         public override uint Size { get; }
 
-        public BitfieldField(string type, IReadOnlyList<(string name, uint length)> bitfieldElements)
+        private ParserType ParserType => TypeCache[Type];
+
+        public BitfieldField(TypeCache typeCache, string type, IReadOnlyList<(string name, uint length)> bitfieldElements)
         {
+            TypeCache = typeCache;
             Name = null;
             Type = type;
             BitfieldElements = bitfieldElements;
@@ -257,9 +273,9 @@ namespace GTASDK.Generator
             var bitCount = bitfieldElements.Aggregate(0U, (acc, next) => acc + next.length); // Count the amount of bits
             bitCount = (uint)(bitCount + (bitCount % 8)); // Round up to the nearest byte
             var byteCount = bitCount / 8; // Convert to bytes
-            byteCount += byteCount % Program.Types[type].Size; // round up to align with bitfield size
+            byteCount += byteCount % ParserType.Size; // round up to align with bitfield size
 
-            Size = Math.Max(byteCount, Program.Types[type].Size); // ensure that the size is at least the size of any element
+            Size = Math.Max(byteCount, ParserType.Size); // ensure that the size is at least the size of any element
         }
 
         public override string Emit(uint offset)
@@ -281,10 +297,10 @@ namespace GTASDK.Generator
                 else
                 {
                     sb.Append($@"
-                        {Visibility} {Program.Types[Type].TypeMapsTo ?? Type} {name}
+                        {Visibility} {ParserType.TypeMapsTo ?? Type} {name}
                         {{
-                            get => {Program.Types[Type].BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
-                            set => {Program.Types[Type].BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
                         }}
                     ");
                 }
@@ -302,7 +318,7 @@ namespace GTASDK.Generator
     }
 
 
-    internal enum Visibility
+    public enum Visibility
     {
         @private, @internal, @public
     }
