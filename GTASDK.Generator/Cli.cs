@@ -67,6 +67,7 @@ namespace GTASDK.Generator
                             }
                             else
                             {
+                                Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? throw new InvalidOperationException($"Invalid output path: {outputPath}"));
                                 File.WriteAllText(outputPath, type.GraphToString());
                             }
 
