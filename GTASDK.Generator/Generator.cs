@@ -52,10 +52,10 @@ namespace GTASDK.Generator
             var structure = serializer.Deserialize<IDictionary<string, object>>(input);
 
             var typeNamespace = (string) structure["namespace"];
-            var fieldDefinitions = structure["fields"] as List<object>;
-            var staticDefinitions = structure["static"] as List<object>;
+            var fieldDefinitions = structure.TryGetValue("fields", out var outFields) ? (List<object>) outFields : null;
+            var staticDefinitions = structure.TryGetValue("static", out var outStaticDefinitions) ? (List<object>) outStaticDefinitions : null;
 
-            var presetSize = structure["size"] as int?;
+            var presetSize = structure.TryGetValue("size", out var outPresetSize) ? (int?) outPresetSize : null;
 
             var statics = new List<StaticMember>();
             if (staticDefinitions != null)
