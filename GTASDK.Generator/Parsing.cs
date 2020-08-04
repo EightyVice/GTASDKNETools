@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace GTASDK.Generator
 {
     public class Parsing
     {
         private readonly TypeCache _typeCache;
+        internal const string PropModifiers = @"[MethodImpl(MethodImplOptions.AggressiveInlining)]";
 
         public Parsing(TypeCache typeCache)
         {
@@ -132,8 +132,8 @@ namespace GTASDK.Generator
             return $@"
                 {Visibility} IntPtr {Name}
                 {{
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    ${Parsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    ${Parsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -189,8 +189,8 @@ namespace GTASDK.Generator
                 return $@"
                     {Visibility} Span<{ParserType.TypeMapsTo ?? Type}> {Name}
                     {{
-                        [MethodImpl(MethodImplOptions.AggressiveInlining)] get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
-                        [MethodImpl(MethodImplOptions.AggressiveInlining)] set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
+                        ${Parsing.PropModifiers} get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
+                        ${Parsing.PropModifiers} set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
                     }}
                 ";
             }
@@ -204,8 +204,8 @@ namespace GTASDK.Generator
                         // {Type} at offset 0x{offset:X}
                         {Visibility} IntPtr {Name}
                         {{
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                            ${Parsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                            ${Parsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                         }}
                     ";
                 }
@@ -214,8 +214,8 @@ namespace GTASDK.Generator
                     // {Type} at offset 0x{offset:X}
                     {Visibility} {type.TypeMapsTo ?? Type} {Name}
                     {{
-                        [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
-                        [MethodImpl(MethodImplOptions.AggressiveInlining)] set => throw new InvalidOperationException(""NOT DONE YET"");
+                        ${Parsing.PropModifiers} get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
+                        ${Parsing.PropModifiers} set => throw new InvalidOperationException(""NOT DONE YET"");
                     }}
                 ";
             }
@@ -224,8 +224,8 @@ namespace GTASDK.Generator
                 // {Type} at offset 0x{offset:X}
                 {Visibility} {ParserType.TypeMapsTo ?? Type} {Name}
                 {{
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    ${Parsing.PropModifiers} get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    ${Parsing.PropModifiers} set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -271,7 +271,7 @@ namespace GTASDK.Generator
             BitfieldElements = bitfieldElements;
 
             var bitCount = bitfieldElements.Aggregate(0U, (acc, next) => acc + next.length); // Count the amount of bits
-            bitCount = (uint)(bitCount + (bitCount % 8)); // Round up to the nearest byte
+            bitCount += (bitCount % 8); // Round up to the nearest byte
             var byteCount = bitCount / 8; // Convert to bytes
             byteCount += byteCount % ParserType.Size; // round up to align with bitfield size
 
@@ -289,8 +289,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} bool {name}
                         {{
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
+                            ${Parsing.PropModifiers} get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
+                            ${Parsing.PropModifiers} set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
                         }}
                     ");
                 }
@@ -299,8 +299,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} {ParserType.TypeMapsTo ?? Type} {name}
                         {{
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
-                            [MethodImpl(MethodImplOptions.AggressiveInlining)] set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            ${Parsing.PropModifiers} get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            ${Parsing.PropModifiers} set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
                         }}
                     ");
                 }
