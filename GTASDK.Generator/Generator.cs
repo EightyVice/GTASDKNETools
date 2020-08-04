@@ -156,6 +156,7 @@ namespace {Namespace}
     {{
         /// <summary>Size of this type in native code, in bytes.</summary>
         public const uint _Size = 0x{Size:X}U;
+
 {StaticsToString(4, 2)}
 
 {FieldsToString(4, 2)}
@@ -187,18 +188,21 @@ namespace {Namespace}
         private static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)
         {
             var output = new StringBuilder();
-            foreach (var line in stringComponents.SelectMany(s => s.Split('\n')).Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e)))
+            foreach (var lines in stringComponents.Select(s => s.Split('\n').Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e))))
             {
-                if (line.EndsWith("}"))
+                foreach (var line in lines)
                 {
-                    indentLevel--;
-                }
+                    if (line.EndsWith("}"))
+                    {
+                        indentLevel--;
+                    }
 
-                output.Append(new string(' ', indentation * indentLevel)).AppendLine(line);
+                    output.Append(new string(' ', indentation * indentLevel)).AppendLine(line);
 
-                if (line.EndsWith("{"))
-                {
-                    indentLevel++;
+                    if (line.EndsWith("{"))
+                    {
+                        indentLevel++;
+                    }
                 }
 
                 output.AppendLine();
