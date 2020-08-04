@@ -53,12 +53,14 @@
     <Compile Include="FieldParsing.cs" />
     <Compile Include="Generator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StaticParsing.cs" />
     <Compile Include="TypeCache.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Templates\ViceCity\CEntity.yml" />
+    <None Include="Templates\ViceCity\CPopulation.yml" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

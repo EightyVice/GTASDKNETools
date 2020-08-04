@@ -17,13 +17,15 @@ namespace GTASDK.Generator
 
         private readonly IDictionary<string, TypeGraph> _typeGraphCache = new Dictionary<string, TypeGraph>();
         private readonly TypeCache _typeCache;
-        private readonly Parsing _parsing;
+        private readonly FieldParsing _fieldParsing;
+        private readonly StaticParsing _staticParsing;
 
         public Generator(string rootDirectory)
         {
             _rootDirectory = rootDirectory;
             _typeCache = new TypeCache(this);
-            _parsing = new Parsing(_typeCache);
+            _fieldParsing = new FieldParsing(_typeCache);
+            _staticParsing = new StaticParsing(_typeCache);
         }
 
         public TypeGraph GetCachedTypeGraph(string name)
@@ -50,34 +52,53 @@ namespace GTASDK.Generator
             var structure = serializer.Deserialize<IDictionary<string, object>>(input);
 
             var typeNamespace = (string) structure["namespace"];
-            var fieldDefinitions = (List<object>) structure["fields"];
+            var fieldDefinitions = structure["fields"] as List<object>;
+            var staticDefinitions = structure["static"] as List<object>;
 
             var presetSize = structure["size"] as int?;
 
-            var fields = new List<Field>();
-
-            uint offset = 0;
-            foreach (var entry in fieldDefinitions)
+            var statics = new List<StaticMember>();
+            if (staticDefinitions != null)
             {
-                Field entryField;
-
-                switch (entry)
+                foreach (var entry in staticDefinitions)
                 {
-                    case string str:
-                        entryField = _parsing.ParseStringDescriptor(str);
-                        break;
-                    case List<object> list:
-                        entryField = _parsing.ParseRegularField(list);
-                        break;
-                    case Dictionary<object, object> dict:
-                        entryField = _parsing.ParseComplexField(dict);
-                        break;
-                    default:
-                        throw new ArgumentException($"Unrecognized entry type {entry}");
+                    switch (entry)
+                    {
+                        case List<object> list:
+                            statics.Add(_staticParsing.ParseDefinition(list));
+                            break;
+                        default:
+                            throw new ArgumentException($"Unrecognized entry type {entry}");
+                    }
                 }
+            }
 
-                fields.Add(entryField);
-                offset += entryField.Size;
+            var fields = new List<Field>();
+            uint offset = 0;
+            if (fieldDefinitions != null)
+            {
+                foreach (var entry in fieldDefinitions)
+                {
+                    Field entryField;
+
+                    switch (entry)
+                    {
+                        case string str:
+                            entryField = _fieldParsing.ParseStringDescriptor(str);
+                            break;
+                        case List<object> list:
+                            entryField = _fieldParsing.ParseRegularField(list);
+                            break;
+                        case Dictionary<object, object> dict:
+                            entryField = _fieldParsing.ParseComplexField(dict);
+                            break;
+                        default:
+                            throw new ArgumentException($"Unrecognized entry type {entry}");
+                    }
+
+                    fields.Add(entryField);
+                    offset += entryField.Size;
+                }
             }
 
             var size = offset;
