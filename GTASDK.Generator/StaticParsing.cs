@@ -48,8 +48,8 @@ namespace GTASDK.Generator
                 // static {Type} at 0x{Address:X}
                 public static {ParserType.TypeMapsTo ?? Type} {Name}
                 {{
-                    ${FieldParsing.PropModifiers} get => {ParserType.Template.Get($"0x{Address:X}")};
-                    ${FieldParsing.PropModifiers} set => {ParserType.Template.Set($"0x{Address:X}")};
+                    {FieldParsing.PropModifiers} get => {ParserType.Template.Get($"0x{Address:X}")};
+                    {FieldParsing.PropModifiers} set => {ParserType.Template.Set($"0x{Address:X}")};
                 }}
             ";
         }
