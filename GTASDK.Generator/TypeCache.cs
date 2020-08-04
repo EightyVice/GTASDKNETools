@@ -83,7 +83,7 @@ namespace GTASDK.Generator
         public static BuiltinType Pointer { get; } = new BuiltinType
         {
             Size = 0x4,
-            Template = new GetSetTemplate("(IntPtr)({0})", "Memory.WriteUInt32({0}, (int)value)")
+            Template = new GetSetTemplate("(IntPtr)({0})", "Memory.WriteUInt32({0}, (uint)value)")
         };
 
         public static readonly IReadOnlyDictionary<string, BuiltinType> Builtin = new Dictionary<string, BuiltinType>
@@ -146,7 +146,7 @@ namespace GTASDK.Generator
             ["CPlaceable"] = new BuiltinType
             {
                 Size = 0x48,
-                Template = new GetSetTemplate("new CPlaceable({0})", @"throw new InvalidOperationException(""NOT DONE YET"")")
+                Template = new GetSetTemplate("new CPlaceable((IntPtr){0})", @"throw new InvalidOperationException(""NOT DONE YET"")")
             }
         };
     }
