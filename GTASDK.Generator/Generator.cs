@@ -107,7 +107,7 @@ namespace GTASDK.Generator
                 Debug.WriteLine($"Size of {typeName} is 0x{size:X}, expected 0x{presetSize:X}");
             }
 
-            return new TypeGraph(typeNamespace, typeName, size, fields);
+            return new TypeGraph(typeNamespace, typeName, size, statics, fields);
         }
     }
 
@@ -133,13 +133,15 @@ namespace GTASDK.Generator
         public string Namespace { get; }
         public string Name { get; }
         public uint Size { get; }
+        public IList<StaticMember> Statics { get; }
         public IList<Field> Fields { get; }
 
-        public TypeGraph(string typeNamespace, string name, uint size, IList<Field> fields)
+        public TypeGraph(string typeNamespace, string name, uint size, IList<StaticMember> statics, IList<Field> fields)
         {
             Namespace = typeNamespace;
             Name = name;
             Size = size;
+            Statics = statics;
             Fields = fields;
         }
 
@@ -154,10 +156,18 @@ namespace {Namespace}
     {{
         /// <summary>Size of this type in native code, in bytes.</summary>
         public const uint _Size = 0x{Size:X}U;
+{StaticsToString(4, 2)}
 
 {FieldsToString(4, 2)}
     }}
 }}";
+        }
+
+        private string StaticsToString(int indentation, int indentLevel = 0)
+        {
+            var staticsEmitted = Statics.Select(staticMember => staticMember.Emit());
+
+            return RedoIndentation(indentation, indentLevel, staticsEmitted);
         }
 
         private string FieldsToString(int indentation, int indentLevel = 0)
@@ -171,23 +181,24 @@ namespace {Namespace}
                 offset += field.Size;
             }
 
+            return RedoIndentation(indentation, indentLevel, fieldsEmitted);
+        }
+
+        private static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)
+        {
             var output = new StringBuilder();
-            foreach (var s in fieldsEmitted)
+            foreach (var line in stringComponents.SelectMany(s => s.Split('\n')).Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e)))
             {
-                var lines = s.Split('\n').Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e));
-                foreach (var line in lines)
+                if (line.EndsWith("}"))
                 {
-                    if (line.EndsWith("}"))
-                    {
-                        indentLevel--;
-                    }
+                    indentLevel--;
+                }
 
-                    output.Append(new string(' ', indentation * indentLevel)).AppendLine(line);
+                output.Append(new string(' ', indentation * indentLevel)).AppendLine(line);
 
-                    if (line.EndsWith("{"))
-                    {
-                        indentLevel++;
-                    }
+                if (line.EndsWith("{"))
+                {
+                    indentLevel++;
                 }
 
                 output.AppendLine();
