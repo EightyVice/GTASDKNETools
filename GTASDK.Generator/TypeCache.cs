@@ -83,7 +83,7 @@ namespace GTASDK.Generator
         public static BuiltinType Pointer { get; } = new BuiltinType
         {
             Size = 0x4,
-            Template = new GetSetTemplate("(IntPtr)({0})", "Memory.WriteUInt32({0}, (uint)value)")
+            Template = new GetSetTemplate("(IntPtr)({0})", "Memory.WriteInt32({0}, value.ToInt32())")
         };
 
         public static readonly IReadOnlyDictionary<string, BuiltinType> Builtin = new Dictionary<string, BuiltinType>
