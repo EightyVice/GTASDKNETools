@@ -146,7 +146,7 @@ namespace GTASDK.Generator
             ["CPlaceable"] = new BuiltinType
             {
                 Size = 0x48,
-                Template = new GetSetTemplate("new CPlaceable((IntPtr){0})", @"throw new InvalidOperationException(""NOT DONE YET"")")
+                Template = new GetSetTemplate("new CPlaceable((IntPtr){0})", @"Memory.CopyRegion({0}, value.BaseAddress, 0x48)")
             }
         };
     }
@@ -171,7 +171,7 @@ namespace GTASDK.Generator
         public CustomType(TypeGraph typeGraph)
         {
             _typeGraph = typeGraph;
-            Template = new GetSetTemplate($"new ${_typeGraph.Name}({{0}})", @"throw new InvalidOperationException(""NOT DONE YET"")");
+            Template = new GetSetTemplate($"new {_typeGraph.Name}({{0}})", $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)");
         }
     }
 
