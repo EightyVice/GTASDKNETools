@@ -264,7 +264,7 @@ namespace GTASDK.Generator
             BitfieldElements = bitfieldElements;
 
             var bitCount = bitfieldElements.Aggregate(0U, (acc, next) => acc + next.length); // Count the amount of bits
-            bitCount += (bitCount % 8); // Round up to the nearest byte
+            bitCount += bitCount % 8; // Round up to the nearest byte
             var byteCount = bitCount / 8; // Convert to bytes
             byteCount += byteCount % ParserType.Size; // round up to align with bitfield size
 
@@ -309,7 +309,6 @@ namespace GTASDK.Generator
             return sb.ToString();
         }
     }
-
 
     public enum Visibility
     {
