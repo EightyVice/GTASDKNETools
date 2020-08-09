@@ -149,6 +149,7 @@ namespace GTASDK.Generator
         {
             return $@"using System;
 using System.Runtime.CompilerServices;
+using EasyHook;
 
 namespace {Namespace}
 {{

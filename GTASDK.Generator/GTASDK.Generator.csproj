@@ -52,6 +52,7 @@
     <Compile Include="Cli.cs" />
     <Compile Include="FieldParsing.cs" />
     <Compile Include="Generator.cs" />
+    <Compile Include="MethodParsing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StaticParsing.cs" />
     <Compile Include="TypeCache.cs" />
