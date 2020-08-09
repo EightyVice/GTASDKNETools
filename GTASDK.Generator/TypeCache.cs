@@ -175,6 +175,29 @@ namespace GTASDK.Generator
         }
     }
 
+    public sealed class CompositeType
+    {
+        private readonly TypeCache _typeCache;
+        public ParserType BackingType => _typeCache[OriginalName];
+        public string OriginalName { get; }
+        public bool IsPointer { get; }
+        public string CsharpName => BackingType.TypeMapsTo ?? OriginalName;
+
+        public CompositeType(TypeCache typeCache, string typeName)
+        {
+            _typeCache = typeCache;
+            if (typeName.EndsWith("*"))
+            {
+                typeName = typeName.Substring(0, typeName.Length - 1);
+                IsPointer = true;
+            }
+
+            OriginalName = typeName;
+        }
+
+        public bool TryGet(out ParserType type) => _typeCache.TryGetValue(OriginalName, out type);
+    }
+
     public class TypeCache
     {
         private readonly Generator _generator;

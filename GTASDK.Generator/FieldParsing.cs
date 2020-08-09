@@ -142,20 +142,13 @@ namespace GTASDK.Generator
     public abstract class ComplexTypedField : Field
     {
         protected TypeCache TypeCache { get; }
-        public string Type { get; }
-        public bool IsPointer { get; }
+        public CompositeType Type { get; }
         public uint? InlineArrayLength { get; }
 
-        protected ParserType ParserType => TypeCache[Type];
+        protected ParserType ParserType => Type.BackingType;
 
         protected ComplexTypedField(TypeCache typeCache, string type)
         {
-            if (type.EndsWith("*"))
-            {
-                type = type.Substring(0, type.Length - 1);
-                IsPointer = true;
-            }
-
             if (type.EndsWith("]"))
             {
                 var sizeStartingIndex = type.IndexOf('[') + 1;
@@ -165,14 +158,14 @@ namespace GTASDK.Generator
             }
 
             TypeCache = typeCache;
-            Type = type;
+            Type = new CompositeType(TypeCache, type);
         }
     }
 
     public sealed class AlignedField : ComplexTypedField
     {
         public override uint Size => BaseSize * (InlineArrayLength ?? 1);
-        private uint BaseSize => IsPointer ? Types.Pointer.Size : TypeCache[Type].Size;
+        private uint BaseSize => Type.IsPointer ? Types.Pointer.Size : ParserType.Size;
 
         public AlignedField(TypeCache typeCache, string type, string name, Visibility visibility = Visibility.@public) : base(typeCache, type)
         {
@@ -187,17 +180,17 @@ namespace GTASDK.Generator
                 // TODO: do we need to support both InlineArrayLength and IsPointer at the same time?
 
                 return $@"
-                    {Visibility} Span<{ParserType.TypeMapsTo ?? Type}> {Name}
+                    {Visibility} Span<{Type.CsharpName}> {Name}
                     {{
-                        {FieldParsing.PropModifiers} get => Memory.GetSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
-                        {FieldParsing.PropModifiers} set => Memory.WriteSpan<{ParserType.TypeMapsTo ?? Type}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
+                        {FieldParsing.PropModifiers} get => Memory.GetSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
+                        {FieldParsing.PropModifiers} set => Memory.WriteSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
                     }}
                 ";
             }
 
-            if (IsPointer)
+            if (Type.IsPointer)
             {
-                if (!TypeCache.TryGetValue(Type, out var type))
+                if (!Type.TryGet(out var type))
                 {
                     return $@"
                         // PLACEHOLDER: Expose raw IntPtr
@@ -212,7 +205,7 @@ namespace GTASDK.Generator
 
                 return $@"
                     // {Type} at offset 0x{offset:X}
-                    {Visibility} {type.TypeMapsTo ?? Type} {Name}
+                    {Visibility} {Type.CsharpName} {Name}
                     {{
                         {FieldParsing.PropModifiers} get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
                         {FieldParsing.PropModifiers} set => throw new InvalidOperationException(""NOT DONE YET"");
@@ -222,7 +215,7 @@ namespace GTASDK.Generator
 
             return $@"
                 // {Type} at offset 0x{offset:X}
-                {Visibility} {ParserType.TypeMapsTo ?? Type} {Name}
+                {Visibility} {Type.CsharpName} {Name}
                 {{
                     {FieldParsing.PropModifiers} get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
                     {FieldParsing.PropModifiers} set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
