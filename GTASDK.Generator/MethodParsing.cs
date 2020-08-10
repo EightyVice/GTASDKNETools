@@ -140,7 +140,7 @@ namespace GTASDK.Generator
 
                 [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
                 public delegate {ReturnType.CsharpName} {delegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
-                private static readonly {delegateName} Call_{delegateName} = Memory.CallFunction<{delegateName}>({Offset});
+                private static readonly {delegateName} Call_{delegateName} = Memory.CallFunction<{delegateName}>()x{Offset:X});
 
                 public static partial class Hook
                 {{
