@@ -12,7 +12,10 @@ using SharpYaml.Serialization.Descriptors;
 
 namespace GTASDK.Generator
 {
-    // https://gist.github.com/PathogenDavid/434ff4cbb7512576c2b128b74268fb09
+    /// <summary>
+    /// Deserializes and serializes value tuples of arbitrary sizes.
+    /// </summary>
+    /// <remarks>Mostly taken from <a href="https://gist.github.com/PathogenDavid/434ff4cbb7512576c2b128b74268fb09">gist/PathogenDavid/434ff4cbb7512576c2b128b74268fb09</a></remarks>
     internal class ValueTupleSerializer : IYamlSerializable, IYamlSerializableFactory
     {
         public IYamlSerializable TryCreate(SerializerContext context, ITypeDescriptor typeDescriptor)

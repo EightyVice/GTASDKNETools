@@ -13,9 +13,14 @@ using SharpYaml.Serialization.Serializers;
 
 namespace GTASDK.Generator
 {
-    // PrimitiveSerializer fork from SharpYaml but with addex hex specifier support.
+    /// <summary>
+    /// Modified version of SharpYaml's PrimitiveSerializer, but supporting a hexadecimal prefix (<c>0x</c>) for numbers.
+    /// </summary>
     internal class PrimitiveSerializer : ScalarSerializerBase, IYamlSerializableFactory
     {
+        private static readonly FieldInfo SerializerContextHasRemapOccurredField
+            = typeof(SerializerContext).GetField("HasRemapOccurred", BindingFlags.Instance | BindingFlags.NonPublic);
+
         public IYamlSerializable TryCreate(SerializerContext context, ITypeDescriptor typeDescriptor)
         {
             return typeDescriptor is PrimitiveDescriptor ? this : null;
@@ -46,9 +51,10 @@ namespace GTASDK.Generator
             if (type.GetTypeInfo().IsEnum)
             {
                 var result = primitiveType.ParseEnum(text, out var enumRemapped);
-                if (enumRemapped)
+                if (enumRemapped && !context.SerializerContext.HasRemapOccurred)
                 {
-                    typeof(SerializerContext).GetField("HasRemapOccurred", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(context.SerializerContext, true);
+                    // WARNING: SLOW
+                    SerializerContextHasRemapOccurredField.SetValue(context.SerializerContext, true);
                     //context.SerializerContext.HasRemapOccurred = true;
                 }
                 return result;
@@ -68,21 +74,15 @@ namespace GTASDK.Generator
 
             if (type == typeof(TimeSpan))
             {
-#if NET35
-                return TimeSpan.Parse(text);
-#else
                 return TimeSpan.Parse(text, CultureInfo.InvariantCulture);
-#endif
             }
-            else if (type == typeof(DateTimeOffset))
+
+            if (type == typeof(DateTimeOffset))
             {
-#if NET35
-                return DateTimeOffset.Parse(text);
-#else
                 return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture);
-#endif
             }
-            else if (type == typeof(Guid))
+
+            if (type == typeof(Guid))
             {
                 return new Guid(text);
             }
@@ -168,9 +168,8 @@ namespace GTASDK.Generator
         /// <returns></returns>
         private static string AppendDecimalPoint(string text, bool hasNaN)
         {
-            for (var i = 0; i < text.Length; i++)
+            foreach (var c in text)
             {
-                var c = text[i];
                 // Do not append a decimal point if floating point type value
                 // - is in exponential form, or
                 // - already has a decimal point
@@ -266,19 +265,11 @@ namespace GTASDK.Generator
                     default:
                         if (valueType == typeof(TimeSpan))
                         {
-#if NET35
-                            text = string.Format("{0:G}",((TimeSpan) value));
-#else
                             text = ((TimeSpan)value).ToString("G", CultureInfo.InvariantCulture);
-#endif
                         }
                         else if (valueType == typeof(DateTimeOffset))
                         {
-#if NET35
-                            text = string.Format("{0:o}", ((DateTimeOffset) value));
-#else
                             text = ((DateTimeOffset)value).ToString("o", CultureInfo.InvariantCulture);
-#endif
                         }
                         else if (valueType == typeof(Guid))
                         {

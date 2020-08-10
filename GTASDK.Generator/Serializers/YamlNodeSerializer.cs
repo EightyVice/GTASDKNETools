@@ -8,6 +8,9 @@ using YamlNode = SharpYaml.Model.YamlNode;
 
 namespace GTASDK.Generator
 {
+    /// <summary>
+    /// Deserializes YamlNode, YamlMapping, YamlSequence and YamlValue from any arbitrary object tree. No serialization support yet.
+    /// </summary>
     internal class YamlNodeSerializer : IYamlSerializable, IYamlSerializableFactory
     {
         public IYamlSerializable TryCreate(SerializerContext context, ITypeDescriptor typeDescriptor)
