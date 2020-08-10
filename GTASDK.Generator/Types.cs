@@ -209,8 +209,8 @@ namespace GTASDK.Generator
     {
         public string TypeMapsTo { get; set; } = null;
         public virtual uint Size { get; set; }
-        public GetSetTemplate Template { get; set; }
-        public GetSetTemplate BitsTemplate { get; set; }
+        public GetSetTemplate Template { get; set; } = new GetSetTemplate();
+        public GetSetTemplate BitsTemplate { get; set; } = new GetSetTemplate();
     }
 
     public class BuiltinType : ParserType
