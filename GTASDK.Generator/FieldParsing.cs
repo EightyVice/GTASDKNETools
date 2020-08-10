@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using SharpYaml.Model;
+using SharpYaml.Serialization;
+using YamlNode = SharpYaml.Model.YamlNode;
 
 namespace GTASDK.Generator
 {
@@ -15,23 +19,23 @@ namespace GTASDK.Generator
             _typeCache = typeCache;
         }
 
-        public Field ParseComplexField(Dictionary<object, object> dict)
+        public Field ParseComplexField(IReadOnlyDictionary<ComplexFieldType, YamlSequence> dict)
         {
             var entryKvp = dict.Single();
-            var instruction = (string)entryKvp.Key;
-            var data = (List<object>)entryKvp.Value;
+            var instruction = entryKvp.Key;
+            var data = entryKvp.Value;
             switch (instruction)
             {
-                case "union":
-                    return ParseUnion(data);
-                case "bitfield":
-                    return ParseBitfield(data);
+                case ComplexFieldType.Union:
+                    return ParseUnion(data.ToObjectX<List<(string type, string name)>>());
+                case ComplexFieldType.Bitfield:
+                    return ParseBitfield(data.ToObjectX<List<YamlNode>>());
                 default:
                     throw new ArgumentException($"Invalid instruction {instruction}, must be one of [union, bitfield]");
             }
         }
 
-        public Field ParseBitfield(List<object> data)
+        public Field ParseBitfield(IReadOnlyList<YamlNode> data)
         {
             // Type of the bitfield members
             string type = null;
@@ -41,29 +45,16 @@ namespace GTASDK.Generator
             {
                 switch (dataEntry)
                 {
-                    case Dictionary<object, object> dict1:
-                        foreach (var kvp1 in dict1)
+                    case YamlMapping dict1:
+                        var descriptor = dict1.ToObjectX<BitfieldDescriptor>();
+                        if (descriptor.Type != null)
                         {
-                            switch ((string)kvp1.Key)
-                            {
-                                case "type":
-                                    type = (string)kvp1.Value;
-                                    break;
-                                default:
-                                    throw new ArgumentException(
-                                        $"Unsupported bitfield parameter {kvp1.Key}, must be one of [name, type]");
-                            }
+                            type = descriptor.Type;
                         }
 
                         break;
-                    case List<object> list1:
-                        if (list1.Count != 2)
-                        {
-                            throw new ArgumentException(
-                                $"Bitfield entry must be a tuple of [name, bitLength], but had too many or too few elements: {string.Join(",", list1)}");
-                        }
-
-                        bitfieldBits.Add(((string)list1[0], (uint)(int)list1[1]));
+                    case YamlSequence list1:
+                        bitfieldBits.Add(list1.ToObjectX<(string name, uint length)>());
                         break;
                     default:
                         throw new ArgumentException($"Unrecognized bitfield entry type {dataEntry}");
@@ -78,28 +69,31 @@ namespace GTASDK.Generator
             return new BitfieldField(_typeCache, type, bitfieldBits);
         }
 
-        public Field ParseUnion(IEnumerable<object> data)
+        public Field ParseUnion(IReadOnlyList<(string type, string name)> data)
         {
             var unionElements = new List<AlignedField>();
-            foreach (List<object> unionElement in data)
+            foreach (var (type, name) in data)
             {
-                if (unionElement.Count != 2)
-                {
-                    throw new ArgumentException(
-                        $"Union must be a tuple of [type, name], but had too many or too few elements: {string.Join(",", unionElement)}");
-                }
-
-                unionElements.Add(new AlignedField(_typeCache, (string)unionElement[0], (string)unionElement[1]));
+                unionElements.Add(new AlignedField(_typeCache, type, name));
             }
 
             return new UnionField(unionElements);
         }
 
-        public Field ParseRegularField(IReadOnlyList<object> list)
+        public Field ParseRegularField(YamlSequence list)
         {
-            return list.Count == 3
-                ? new AlignedField(_typeCache, (string)list[1], (string)list[2], (string)list[0] == "private" ? Visibility.@private : Visibility.@public)
-                : new AlignedField(_typeCache, (string)list[0], (string)list[1]);
+            if (list.Count == 3)
+            {
+                var (visibility, type, name) = list.ToObjectX<(Visibility visibility, string type, string name)>();
+
+                return new AlignedField(_typeCache, type, name, visibility);
+            }
+            else
+            {
+                var (type, name) = list.ToObjectX<(string type, string name)>();
+
+                return new AlignedField(_typeCache, type, name);
+            }
         }
 
         public Field ParseStringDescriptor(string str)
@@ -312,6 +306,25 @@ namespace GTASDK.Generator
 
     public enum Visibility
     {
-        @private, @internal, @public
+        [YamlMember("private")]
+        @private,
+        [YamlMember("internal")]
+        @internal,
+        [YamlMember("public")]
+        @public
+    }
+    public enum ComplexFieldType
+    {
+        [YamlMember("union")]
+        Union,
+        [YamlMember("bitfield")]
+        Bitfield
+    }
+
+    public class BitfieldDescriptor
+    {
+        [YamlMember("type")]
+        [DefaultValue(null)]
+        public string Type { get; set; }
     }
 }

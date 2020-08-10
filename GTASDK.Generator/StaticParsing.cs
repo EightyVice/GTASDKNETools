@@ -15,14 +15,9 @@ namespace GTASDK.Generator
             _typeCache = typeCache;
         }
 
-        public StaticMember ParseDefinition(List<object> list)
+        public StaticMember ParseDefinition((string type, string name, uint address) list)
         {
-            if (list.Count != 3)
-            {
-                throw new ArgumentException("There were either too many or too few items in list, must be exactly [type, name, address]", nameof(list));
-            }
-
-            return new StaticMember(_typeCache, (string) list[0], (string) list[1], (uint) (int) list[2]);
+            return new StaticMember(_typeCache, list.type, list.name, list.address);
         }
     }
 

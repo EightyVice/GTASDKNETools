@@ -196,6 +196,11 @@ namespace GTASDK.Generator
         }
 
         public bool TryGet(out ParserType type) => _typeCache.TryGetValue(OriginalName, out type);
+
+        public override string ToString()
+        {
+            return OriginalName;
+        }
     }
 
     public class TypeCache

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -7,7 +8,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.Server;
+using SharpYaml;
+using SharpYaml.Model;
 using SharpYaml.Serialization;
+using Path = System.IO.Path;
+using YamlNode = SharpYaml.Model.YamlNode;
 
 namespace GTASDK.Generator
 {
@@ -19,6 +24,18 @@ namespace GTASDK.Generator
         private readonly TypeCache _typeCache;
         private readonly FieldParsing _fieldParsing;
         private readonly StaticParsing _staticParsing;
+
+        internal static SerializerSettings SerializerSettings { get; } = new SerializerSettings();
+        internal static Serializer Serializer { get; }
+
+        static Generator()
+        {
+            SerializerSettings.RegisterSerializerFactory(new ValueTupleSerializer());
+            //SerializerSettings.RegisterSerializerFactory(new NullableSerializer());
+            SerializerSettings.RegisterSerializerFactory(new YamlNodeSerializer());
+            SerializerSettings.RegisterSerializerFactory(new PrimitiveSerializer());
+            Serializer = new Serializer(SerializerSettings);
+        }
 
         public Generator(string rootDirectory)
         {
@@ -45,52 +62,60 @@ namespace GTASDK.Generator
             return _typeGraphCache[name] = GetTypeGraph(name, input);
         }
 
+        public class TypeGraphModel
+        {
+            [YamlMember("namespace")]
+            public string Namespace { get; set; }
+
+            [YamlMember("size")]
+            [DefaultValue(null)]
+            public int PresetSize { get; set; }
+
+            [YamlMember("fields")]
+            [DefaultValue(null)]
+            public List<YamlNode> FieldDefinitions { get; set; }
+
+            [YamlMember("static")]
+            [DefaultValue(null)]
+            public List<(string type, string name, uint address)> StaticDefinitions { get; set; }
+
+            [YamlMember("methods")]
+            [DefaultValue(null)]
+            public List<object> InstanceMethodDefinitions { get; set; }
+        }
+
         public TypeGraph GetTypeGraph(string typeName, string input)
         {
             Debug.WriteLine($"Processing type {typeName} in module {Path.GetFileName(_rootDirectory)}");
-            var serializer = new Serializer();
-            var structure = serializer.Deserialize<IDictionary<string, object>>(input);
-
-            var typeNamespace = (string) structure["namespace"];
-            var fieldDefinitions = structure.TryGetValue("fields", out var outFields) ? (List<object>) outFields : null;
-            var staticDefinitions = structure.TryGetValue("static", out var outStaticDefinitions) ? (List<object>) outStaticDefinitions : null;
-
-            var presetSize = structure.TryGetValue("size", out var outPresetSize) ? (int?) outPresetSize : null;
+            var structure = Serializer.Deserialize<TypeGraphModel>(input);
 
             var statics = new List<StaticMember>();
-            if (staticDefinitions != null)
+            if (structure.StaticDefinitions != null)
             {
-                foreach (var entry in staticDefinitions)
+                foreach (var entry in structure.StaticDefinitions)
                 {
-                    switch (entry)
-                    {
-                        case List<object> list:
-                            statics.Add(_staticParsing.ParseDefinition(list));
-                            break;
-                        default:
-                            throw new ArgumentException($"Unrecognized entry type {entry}");
-                    }
+                    statics.Add(_staticParsing.ParseDefinition(entry));
                 }
             }
 
             var fields = new List<Field>();
             uint offset = 0;
-            if (fieldDefinitions != null)
+            if (structure.FieldDefinitions != null)
             {
-                foreach (var entry in fieldDefinitions)
+                foreach (var entry in structure.FieldDefinitions)
                 {
                     Field entryField;
 
                     switch (entry)
                     {
-                        case string str:
-                            entryField = _fieldParsing.ParseStringDescriptor(str);
+                        case YamlValue val:
+                            entryField = _fieldParsing.ParseStringDescriptor(val.Value);
                             break;
-                        case List<object> list:
-                            entryField = _fieldParsing.ParseRegularField(list);
+                        case YamlSequence seq:
+                            entryField = _fieldParsing.ParseRegularField(seq);
                             break;
-                        case Dictionary<object, object> dict:
-                            entryField = _fieldParsing.ParseComplexField(dict);
+                        case YamlMapping mapping:
+                            entryField = _fieldParsing.ParseComplexField(mapping.ToObjectX<Dictionary<ComplexFieldType, YamlSequence>>());
                             break;
                         default:
                             throw new ArgumentException($"Unrecognized entry type {entry}");
@@ -102,12 +127,12 @@ namespace GTASDK.Generator
             }
 
             var size = offset;
-            if (size != presetSize)
+            if (size != structure.PresetSize)
             {
-                Debug.WriteLine($"Size of {typeName} is 0x{size:X}, expected 0x{presetSize:X}");
+                Debug.WriteLine($"Size of {typeName} is 0x{size:X}, expected 0x{structure.PresetSize:X}");
             }
 
-            return new TypeGraph(typeNamespace, typeName, size, statics, fields);
+            return new TypeGraph(structure.Namespace, typeName, size, statics, fields);
         }
     }
 
