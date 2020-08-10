@@ -88,7 +88,7 @@ methods:
   - [float, GetDistanceFromCentreOfMassToBaseOfModel, [], 0x487D10]
   - [bool, GetIsOnScreenComplex, [], 0x488250]
   - [bool, GetIsOnScreen, [], 0x4885D0]
-  - [bool, IsVisible, [], 0x488720]
+  - [bool, GetIsVisible, [], 0x488720]
   - [bool, GetIsTouching, [CVector& posn, float radius], 0x488740]
   - [bool, HasPreRenderEffects, [], 0x489170]
   - [void, UpdateRpHAnim, [], 0x489330]
