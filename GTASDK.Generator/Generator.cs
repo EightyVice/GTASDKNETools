@@ -141,14 +141,18 @@ namespace GTASDK.Generator
         public Template Get => parameters => string.Format(_get, parameters);
         public Template Set => parameters => string.Format(_set, parameters);
 
-        private readonly string _get;
-        private readonly string _set;
-
-        public GetSetTemplate(string get, string set)
+        public string Getter
         {
-            _get = get;
-            _set = set;
+            set => _get = value;
         }
+
+        public string Setter
+        {
+            set => _set = value;
+        }
+
+        private string _get;
+        private string _set;
     }
 
     public delegate string Template(params object[] parameters);

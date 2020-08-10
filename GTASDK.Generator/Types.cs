@@ -14,78 +14,126 @@ namespace GTASDK.Generator
             {
                 TypeMapsTo = "byte",
                 Size = sizeof(byte),
-                Template = new GetSetTemplate("Memory.ReadByte({0})", "Memory.WriteByte({0}, value)"),
-                BitsTemplate = new GetSetTemplate(@"Memory.ReadBitsInt8({0}, {1}, {2})", @"throw new InvalidOperationException(""NOT DONE YET"")")
+                Template =
+                {
+                    Getter = "Memory.ReadByte({0})",
+                    Setter = "Memory.WriteByte({0}, value)"
+                },
+                BitsTemplate =
+                {
+                    Getter = "Memory.ReadBitsInt8({0}, {1}, {2})",
+                    Setter = @"throw new InvalidOperationException(""NOT DONE YET"")"
+                }
             };
 
             public static readonly BuiltinType SByte = new BuiltinType
             {
                 TypeMapsTo = "sbyte",
                 Size = sizeof(sbyte),
-                Template = new GetSetTemplate("Memory.ReadSByte({0})", "Memory.WriteSByte({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadSByte({0})",
+                    Setter = "Memory.WriteSByte({0}, value)"
+                }
             };
 
             public static readonly BuiltinType Short = new BuiltinType
             {
                 TypeMapsTo = "short",
                 Size = sizeof(short),
-                Template = new GetSetTemplate("Memory.ReadInt16({0})", "Memory.WriteInt16({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadInt16({0})",
+                    Setter = "Memory.WriteInt16({0}, value)"
+                }
             };
 
             public static readonly BuiltinType UShort = new BuiltinType
             {
                 TypeMapsTo = "ushort",
                 Size = sizeof(ushort),
-                Template = new GetSetTemplate("Memory.ReadUInt16({0})", "Memory.WriteUInt16({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadUInt16({0})",
+                    Setter = "Memory.WriteUInt16({0}, value)"
+                }
             };
 
             public static readonly BuiltinType Int = new BuiltinType
             {
                 TypeMapsTo = "int",
                 Size = sizeof(int),
-                Template = new GetSetTemplate("Memory.ReadInt32({0})", "Memory.WriteInt32({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadInt32({0})",
+                    Setter = "Memory.WriteInt32({0}, value)"
+                }
             };
 
             public static readonly BuiltinType UInt = new BuiltinType
             {
                 TypeMapsTo = "uint",
                 Size = sizeof(uint),
-                Template = new GetSetTemplate("Memory.ReadUInt32({0})", "Memory.WriteUInt32({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadUInt32({0})",
+                    Setter = "Memory.WriteUInt32({0}, value)"
+                }
             };
 
             public static readonly BuiltinType Long = new BuiltinType
             {
                 TypeMapsTo = "long",
                 Size = sizeof(long),
-                Template = new GetSetTemplate("Memory.ReadInt64({0})", "Memory.WriteInt64({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadInt64({0})",
+                    Setter = "Memory.WriteInt64({0}, value)"
+                }
             };
 
             public static readonly BuiltinType ULong = new BuiltinType
             {
                 TypeMapsTo = "ulong",
                 Size = sizeof(ulong),
-                Template = new GetSetTemplate("Memory.ReadUInt64({0})", "Memory.WriteUInt64({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadUInt64({0})",
+                    Setter = "Memory.WriteUInt64({0}, value)"
+                }
             };
 
             public static readonly BuiltinType Float = new BuiltinType
             {
                 TypeMapsTo = "float",
                 Size = sizeof(float),
-                Template = new GetSetTemplate("Memory.ReadFloat({0})", "Memory.WriteFloat({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadFloat({0})",
+                    Setter = "Memory.WriteFloat({0}, value)"
+                }
             };
 
             public static readonly BuiltinType Double = new BuiltinType
             {
                 TypeMapsTo = "double",
                 Size = sizeof(double),
-                Template = new GetSetTemplate("Memory.ReadDouble({0})", "Memory.WriteDouble({0}, value)")
+                Template =
+                {
+                    Getter = "Memory.ReadDouble({0})",
+                    Setter = "Memory.WriteDouble({0}, value)"
+                }
             };
         }
 
         public static BuiltinType Pointer { get; } = new BuiltinType
         {
             Size = 0x4,
-            Template = new GetSetTemplate("(IntPtr)({0})", "Memory.WriteInt32({0}, value.ToInt32())")
+            Template =
+            {
+                Getter = "(IntPtr)({0})",
+                Setter = "Memory.WriteInt32({0}, value.ToInt32())"
+            }
         };
 
         public static readonly IReadOnlyDictionary<string, BuiltinType> Builtin = new Dictionary<string, BuiltinType>
@@ -148,7 +196,11 @@ namespace GTASDK.Generator
             ["CPlaceable"] = new BuiltinType
             {
                 Size = 0x48,
-                Template = new GetSetTemplate("new CPlaceable((IntPtr){0})", @"Memory.CopyRegion({0}, value.BaseAddress, 0x48)")
+                Template =
+                {
+                    Getter = "new CPlaceable((IntPtr){0})",
+                    Setter = "Memory.CopyRegion({0}, value.BaseAddress, 0x48)"
+                }
             }
         };
     }
@@ -173,7 +225,11 @@ namespace GTASDK.Generator
         public CustomType(TypeGraph typeGraph)
         {
             _typeGraph = typeGraph;
-            Template = new GetSetTemplate($"new {_typeGraph.Name}({{0}})", $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)");
+            Template = new GetSetTemplate
+            {
+                Getter = $"new {_typeGraph.Name}({{0}})",
+                Setter = $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)"
+            };
         }
     }
 
