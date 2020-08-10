@@ -138,6 +138,7 @@ namespace GTASDK.Generator
 
     public class GetSetTemplate
     {
+        public delegate string Template(params object[] parameters);
         public Template Get => parameters => string.Format(_get, parameters);
         public Template Set => parameters => string.Format(_set, parameters);
 
@@ -154,8 +155,6 @@ namespace GTASDK.Generator
         private string _get;
         private string _set;
     }
-
-    public delegate string Template(params object[] parameters);
 
     public class TypeGraph
     {
