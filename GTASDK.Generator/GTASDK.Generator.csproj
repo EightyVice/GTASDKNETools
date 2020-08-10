@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Members.cs" />
     <Compile Include="Cli.cs" />
     <Compile Include="Serializers\Extensions.cs" />
     <Compile Include="FieldParsing.cs" />
@@ -60,6 +61,7 @@
     <Compile Include="TypeCache.cs" />
     <Compile Include="Serializers\ValueTupleSerializer.cs" />
     <Compile Include="Serializers\YamlNodeSerializer.cs" />
+    <Compile Include="Types.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

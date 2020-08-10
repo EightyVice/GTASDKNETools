@@ -107,7 +107,7 @@ namespace GTASDK.Generator
         }
     }
 
-    public abstract class Field
+    public abstract class Field : IOffsetEmittableMember
     {
         public abstract uint Size { get; }
         public virtual string Name { get; protected set; }
@@ -304,15 +304,6 @@ namespace GTASDK.Generator
         }
     }
 
-    public enum Visibility
-    {
-        [YamlMember("private")]
-        @private,
-        [YamlMember("internal")]
-        @internal,
-        [YamlMember("public")]
-        @public
-    }
     public enum ComplexFieldType
     {
         [YamlMember("union")]

@@ -29,7 +29,7 @@ namespace GTASDK.Generator
         }
     }
 
-    public abstract class Method
+    public abstract class Method : IFixedEmittableMember
     {
         public virtual string Name { get; protected set; }
         public virtual CompositeType ReturnType { get; protected set; }
