@@ -158,7 +158,6 @@ namespace GTASDK.Generator
             ["<byte>"] = PresetTypes.Byte,
             ["<sbyte>"] = PresetTypes.SByte,
 
-            ["bool"] = PresetTypes.Byte,
             ["char"] = PresetTypes.Byte,
             ["char8_t"] = PresetTypes.Byte,
             ["__int8"] = PresetTypes.Byte,
@@ -180,6 +179,7 @@ namespace GTASDK.Generator
             ["<int>"] = PresetTypes.Int,
             ["<uint>"] = PresetTypes.UInt,
 
+            ["bool"] = PresetTypes.Int,
             ["__int32"] = PresetTypes.Int,
             ["signed"] = PresetTypes.Int,
             ["signed int"] = PresetTypes.Int,
