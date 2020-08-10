@@ -24,6 +24,7 @@ namespace GTASDK.Generator
         private readonly TypeCache _typeCache;
         private readonly FieldParsing _fieldParsing;
         private readonly StaticParsing _staticParsing;
+        private readonly MethodParsing _methodParsing;
 
         internal static SerializerSettings SerializerSettings { get; } = new SerializerSettings();
         internal static Serializer Serializer { get; }
@@ -43,6 +44,7 @@ namespace GTASDK.Generator
             _typeCache = new TypeCache(this);
             _fieldParsing = new FieldParsing(_typeCache);
             _staticParsing = new StaticParsing(_typeCache);
+            _methodParsing = new MethodParsing(_typeCache);
         }
 
         public TypeGraph GetCachedTypeGraph(string name)
@@ -81,22 +83,13 @@ namespace GTASDK.Generator
 
             [YamlMember("methods")]
             [DefaultValue(null)]
-            public List<object> InstanceMethodDefinitions { get; set; }
+            public List<YamlSequence> InstanceMethodDefinitions { get; set; }
         }
 
         public TypeGraph GetTypeGraph(string typeName, string input)
         {
             Debug.WriteLine($"Processing type {typeName} in module {Path.GetFileName(_rootDirectory)}");
             var structure = Serializer.Deserialize<TypeGraphModel>(input);
-
-            var statics = new List<StaticMember>();
-            if (structure.StaticDefinitions != null)
-            {
-                foreach (var entry in structure.StaticDefinitions)
-                {
-                    statics.Add(_staticParsing.ParseDefinition(entry));
-                }
-            }
 
             var fields = new List<Field>();
             uint offset = 0;
@@ -126,28 +119,46 @@ namespace GTASDK.Generator
                 }
             }
 
+            var statics = new List<StaticMember>();
+            if (structure.StaticDefinitions != null)
+            {
+                foreach (var entry in structure.StaticDefinitions)
+                {
+                    statics.Add(_staticParsing.ParseDefinition(entry));
+                }
+            }
+
+            var methods = new List<Method>();
+            if (structure.InstanceMethodDefinitions != null)
+            {
+                foreach (var entry in structure.InstanceMethodDefinitions)
+                {
+                    methods.Add(_methodParsing.ParseMethod(typeName, entry));
+                }
+            }
+
             var size = offset;
             if (size != structure.PresetSize)
             {
                 Debug.WriteLine($"Size of {typeName} is 0x{size:X}, expected 0x{structure.PresetSize:X}");
             }
 
-            return new TypeGraph(structure.Namespace, typeName, size, statics, fields);
+            return new TypeGraph(structure.Namespace, typeName, size, statics, fields, methods);
         }
     }
 
-    public class GetSetTemplate
+    public sealed class GetSetTemplate
     {
         public delegate string Template(params object[] parameters);
         public Template Get => parameters => string.Format(_get, parameters);
         public Template Set => parameters => string.Format(_set, parameters);
 
-        public string Getter
+        public string AsGet
         {
             set => _get = value;
         }
 
-        public string Setter
+        public string AsSet
         {
             set => _set = value;
         }
@@ -156,27 +167,50 @@ namespace GTASDK.Generator
         private string _set;
     }
 
-    public class TypeGraph
+    public sealed class CallTemplate
+    {
+        public delegate string Template(params object[] parameters);
+        public Template Argument => parameters => string.Format(_arg, parameters);
+        public Template Call => parameters => string.Format(_call, parameters);
+
+        public string AsArgument
+        {
+            set => _arg = value;
+        }
+
+        public string AsCall
+        {
+            set => _call = value;
+        }
+
+        private string _arg;
+        private string _call;
+    }
+
+    public sealed class TypeGraph
     {
         public string Namespace { get; }
         public string Name { get; }
         public uint Size { get; }
         public IList<StaticMember> Statics { get; }
         public IList<Field> Fields { get; }
+        public IList<Method> Methods { get; }
 
-        public TypeGraph(string typeNamespace, string name, uint size, IList<StaticMember> statics, IList<Field> fields)
+        public TypeGraph(string typeNamespace, string name, uint size, IList<StaticMember> statics, IList<Field> fields, IList<Method> methods)
         {
             Namespace = typeNamespace;
             Name = name;
             Size = size;
             Statics = statics;
             Fields = fields;
+            Methods = methods;
         }
 
         public string GraphToString()
         {
             return $@"using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using EasyHook;
 
 namespace {Namespace}
@@ -186,18 +220,13 @@ namespace {Namespace}
         /// <summary>Size of this type in native code, in bytes.</summary>
         public const uint _Size = 0x{Size:X}U;
 
+{MethodsToString(4, 2)}
+
 {StaticsToString(4, 2)}
 
 {FieldsToString(4, 2)}
     }}
 }}";
-        }
-
-        private string StaticsToString(int indentation, int indentLevel = 0)
-        {
-            var staticsEmitted = Statics.Select(staticMember => staticMember.Emit());
-
-            return RedoIndentation(indentation, indentLevel, staticsEmitted);
         }
 
         private string FieldsToString(int indentation, int indentLevel = 0)
@@ -212,6 +241,19 @@ namespace {Namespace}
             }
 
             return RedoIndentation(indentation, indentLevel, fieldsEmitted);
+        }
+
+        private string StaticsToString(int indentation, int indentLevel = 0)
+        {
+            var staticsEmitted = Statics.Select(staticMember => staticMember.Emit());
+
+            return RedoIndentation(indentation, indentLevel, staticsEmitted);
+        }
+        private string MethodsToString(int indentation, int indentLevel = 0)
+        {
+            var methodsEmitted = Methods.Select(method => method?.Emit() ?? "");
+
+            return RedoIndentation(indentation, indentLevel, methodsEmitted);
         }
 
         private static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)

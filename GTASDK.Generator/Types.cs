@@ -16,13 +16,13 @@ namespace GTASDK.Generator
                 Size = sizeof(byte),
                 Template =
                 {
-                    Getter = "Memory.ReadByte({0})",
-                    Setter = "Memory.WriteByte({0}, value)"
+                    AsGet = "Memory.ReadByte({0})",
+                    AsSet = "Memory.WriteByte({0}, value)"
                 },
                 BitsTemplate =
                 {
-                    Getter = "Memory.ReadBitsInt8({0}, {1}, {2})",
-                    Setter = @"throw new InvalidOperationException(""NOT DONE YET"")"
+                    AsGet = "Memory.ReadBitsInt8({0}, {1}, {2})",
+                    AsSet = @"throw new InvalidOperationException(""NOT DONE YET"")"
                 }
             };
 
@@ -32,8 +32,8 @@ namespace GTASDK.Generator
                 Size = sizeof(sbyte),
                 Template =
                 {
-                    Getter = "Memory.ReadSByte({0})",
-                    Setter = "Memory.WriteSByte({0}, value)"
+                    AsGet = "Memory.ReadSByte({0})",
+                    AsSet = "Memory.WriteSByte({0}, value)"
                 }
             };
 
@@ -43,8 +43,8 @@ namespace GTASDK.Generator
                 Size = sizeof(short),
                 Template =
                 {
-                    Getter = "Memory.ReadInt16({0})",
-                    Setter = "Memory.WriteInt16({0}, value)"
+                    AsGet = "Memory.ReadInt16({0})",
+                    AsSet = "Memory.WriteInt16({0}, value)"
                 }
             };
 
@@ -54,8 +54,8 @@ namespace GTASDK.Generator
                 Size = sizeof(ushort),
                 Template =
                 {
-                    Getter = "Memory.ReadUInt16({0})",
-                    Setter = "Memory.WriteUInt16({0}, value)"
+                    AsGet = "Memory.ReadUInt16({0})",
+                    AsSet = "Memory.WriteUInt16({0}, value)"
                 }
             };
 
@@ -65,8 +65,8 @@ namespace GTASDK.Generator
                 Size = sizeof(int),
                 Template =
                 {
-                    Getter = "Memory.ReadInt32({0})",
-                    Setter = "Memory.WriteInt32({0}, value)"
+                    AsGet = "Memory.ReadInt32({0})",
+                    AsSet = "Memory.WriteInt32({0}, value)"
                 }
             };
 
@@ -76,8 +76,8 @@ namespace GTASDK.Generator
                 Size = sizeof(uint),
                 Template =
                 {
-                    Getter = "Memory.ReadUInt32({0})",
-                    Setter = "Memory.WriteUInt32({0}, value)"
+                    AsGet = "Memory.ReadUInt32({0})",
+                    AsSet = "Memory.WriteUInt32({0}, value)"
                 }
             };
 
@@ -87,8 +87,8 @@ namespace GTASDK.Generator
                 Size = sizeof(long),
                 Template =
                 {
-                    Getter = "Memory.ReadInt64({0})",
-                    Setter = "Memory.WriteInt64({0}, value)"
+                    AsGet = "Memory.ReadInt64({0})",
+                    AsSet = "Memory.WriteInt64({0}, value)"
                 }
             };
 
@@ -98,8 +98,8 @@ namespace GTASDK.Generator
                 Size = sizeof(ulong),
                 Template =
                 {
-                    Getter = "Memory.ReadUInt64({0})",
-                    Setter = "Memory.WriteUInt64({0}, value)"
+                    AsGet = "Memory.ReadUInt64({0})",
+                    AsSet = "Memory.WriteUInt64({0}, value)"
                 }
             };
 
@@ -109,8 +109,8 @@ namespace GTASDK.Generator
                 Size = sizeof(float),
                 Template =
                 {
-                    Getter = "Memory.ReadFloat({0})",
-                    Setter = "Memory.WriteFloat({0}, value)"
+                    AsGet = "Memory.ReadFloat({0})",
+                    AsSet = "Memory.WriteFloat({0}, value)"
                 }
             };
 
@@ -120,8 +120,19 @@ namespace GTASDK.Generator
                 Size = sizeof(double),
                 Template =
                 {
-                    Getter = "Memory.ReadDouble({0})",
-                    Setter = "Memory.WriteDouble({0}, value)"
+                    AsGet = "Memory.ReadDouble({0})",
+                    AsSet = "Memory.WriteDouble({0}, value)"
+                }
+            };
+
+            public static readonly BuiltinType Void = new BuiltinType
+            {
+                TypeMapsTo = "void",
+                Size = 0, // Not to be used in properties
+                Template =
+                {
+                    AsGet = @"throw new InvalidOperationException(""Not supported on this type"")",
+                    AsSet = @"throw new InvalidOperationException(""Not supported on this type"")"
                 }
             };
         }
@@ -131,8 +142,13 @@ namespace GTASDK.Generator
             Size = 0x4,
             Template =
             {
-                Getter = "(IntPtr)({0})",
-                Setter = "Memory.WriteInt32({0}, value.ToInt32())"
+                AsGet = "(IntPtr)({0})",
+                AsSet = "Memory.WriteInt32({0}, value.ToInt32())"
+            },
+            ArgumentTemplate =
+            {
+                AsArgument = "IntPtr {1}",
+                AsCall = "{1}"
             }
         };
 
@@ -193,13 +209,23 @@ namespace GTASDK.Generator
             ["long double"] = PresetTypes.Double,
 
             // Special/placeholder
+            ["void"] = PresetTypes.Void,
             ["CPlaceable"] = new BuiltinType
             {
                 Size = 0x48,
                 Template =
                 {
-                    Getter = "new CPlaceable((IntPtr){0})",
-                    Setter = "Memory.CopyRegion({0}, value.BaseAddress, 0x48)"
+                    AsGet = "new CPlaceable((IntPtr){0})",
+                    AsSet = "Memory.CopyRegion({0}, value.BaseAddress, 0x48)"
+                }
+            },
+            ["CVector"] = new BuiltinType
+            {
+                Size = sizeof(float) * 3,
+                Template =
+                {
+                    AsGet = "Memory.ReadVector({0})",
+                    AsSet = "Memory.WriteVector({0}, value)"
                 }
             }
         };
@@ -207,10 +233,17 @@ namespace GTASDK.Generator
 
     public abstract class ParserType
     {
-        public string TypeMapsTo { get; set; } = null;
+        public string TypeMapsTo { get; set; }
         public virtual uint Size { get; set; }
         public GetSetTemplate Template { get; set; } = new GetSetTemplate();
         public GetSetTemplate BitsTemplate { get; set; } = new GetSetTemplate();
+
+        // Identity mapping
+        public CallTemplate ArgumentTemplate { get; set; } = new CallTemplate
+        {
+            AsArgument = "{0} {1}",
+            AsCall = "{1}"
+        };
     }
 
     public class BuiltinType : ParserType
@@ -227,8 +260,13 @@ namespace GTASDK.Generator
             _typeGraph = typeGraph;
             Template = new GetSetTemplate
             {
-                Getter = $"new {_typeGraph.Name}({{0}})",
-                Setter = $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)"
+                AsGet = $"new {_typeGraph.Name}({{0}})",
+                AsSet = $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)"
+            };
+            ArgumentTemplate = new CallTemplate
+            {
+                AsArgument = "{0} {1}",
+                AsCall = "{1}.BaseAddress"
             };
         }
     }
@@ -236,28 +274,39 @@ namespace GTASDK.Generator
     public sealed class CompositeType
     {
         private readonly TypeCache _typeCache;
-        public ParserType BackingType => _typeCache[OriginalName];
+        public ParserType BackingType => _typeCache[CppName];
         public string OriginalName { get; }
+        public string CppName { get; }
         public bool IsPointer { get; }
-        public string CsharpName => BackingType.TypeMapsTo ?? OriginalName;
+        public bool IsRef { get; set; }
+        public string CsharpName => BackingType.TypeMapsTo ?? CppName;
 
         public CompositeType(TypeCache typeCache, string typeName)
         {
             _typeCache = typeCache;
+
+            OriginalName = typeName;
+
             if (typeName.EndsWith("*"))
             {
                 typeName = typeName.Substring(0, typeName.Length - 1);
                 IsPointer = true;
             }
 
-            OriginalName = typeName;
+            if (typeName.EndsWith("&"))
+            {
+                typeName = typeName.Substring(0, typeName.Length - 1);
+                IsRef = true;
+            }
+
+            CppName = typeName;
         }
 
-        public bool TryGet(out ParserType type) => _typeCache.TryGetValue(OriginalName, out type);
+        public bool TryGet(out ParserType type) => _typeCache.TryGetValue(CppName, out type);
 
         public override string ToString()
         {
-            return OriginalName;
+            return CppName;
         }
     }
 }
