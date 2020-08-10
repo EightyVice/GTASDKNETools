@@ -67,7 +67,7 @@ namespace GTASDK.Generator
                 // Method: {Name}
 
                 [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-                private delegate {ReturnType.CsharpName} {delegateName}({ContainingType} thisArg, {condensedArguments});
+                public delegate {ReturnType.CsharpName} {delegateName}({ContainingType} thisArg, {condensedArguments});
                 private static readonly {delegateName} Call_{delegateName} = Memory.CallFunction<{delegateName}>({Offset});
 
                 public static partial class Hook
