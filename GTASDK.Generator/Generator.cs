@@ -228,7 +228,7 @@ namespace {Namespace}
     {{
         public static class Hook
         {{
-{HooksToString(4, 2)}
+{HooksToString(4, 3)}
         }}
 
 {MethodsToString(4, 2)}
