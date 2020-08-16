@@ -19,34 +19,31 @@ namespace GTASDK.Generator
 
         public Method ParseMethod(string containingTypeName, YamlSequence sequence)
         {
-            if (sequence.Count == 5)
+            switch (((YamlValue)sequence[0]).Value)
             {
-                var (modifier, returnType, name, arguments, offset) = sequence.ToObjectX<(Modifier modifier, string returnType, string name, string[] arguments, uint offset)>();
-                if (modifier != Modifier.Virtual)
+                case "virtual" when sequence.Count != 5:
+                    throw new ArgumentException("Virtual method definitions must have 5 elements");
+                case "virtual":
                 {
-                    throw new ArgumentException($"Invalid modifier {modifier}, method definitions with 5 elements must be virtual");
+                    var (_, returnType, name, arguments, index) = sequence.ToObjectX<(Modifier modifier, string returnType, string name, string[] arguments, uint index)>();
+                    return new VirtualMethod(_typeCache, containingTypeName, returnType, name, arguments, index);
                 }
-            }
-            else if (sequence.Count == 4)
-            {
-                switch (((YamlValue)sequence[0]).Value)
+                case "partial" when sequence.Count != 5:
+                    throw new ArgumentException("Partial method definitions must have 5 elements");
+                case "partial":
                 {
-                    case "virtual":
-                        throw new ArgumentException("Virtual method definitions must have 5 members");
-                    case "partial":
-                    {
-                        var (modifier, returnType, name, arguments) = sequence.ToObjectX<(Modifier modifier, string returnType, string name, string[] arguments)>();
-                        break;
-                    }
-                    default:
-                    {
-                        var (returnType, name, arguments, offset) = sequence.ToObjectX<(string returnType, string name, string[] arguments, uint offset)>();
-                        return new InstanceMethod(_typeCache, containingTypeName, returnType, name, arguments, offset);
-                    }
+                    var (_, returnType, name, arguments, offset) = sequence.ToObjectX<(Modifier modifier, string returnType, string name, string[] arguments, uint offset)>();
+                    return new PartialMethod(_typeCache, containingTypeName, returnType, name, arguments, offset);
                 }
-            }
+                default:
+                {
+                    if (sequence.Count != 4)
+                        throw new ArgumentException("Method definitions must be either 4 elements or 5 elements with a valid modifier (virtual/partial)");
 
-            return null;
+                    var (returnType, name, arguments, offset) = sequence.ToObjectX<(string returnType, string name, string[] arguments, uint offset)>();
+                    return new InstanceMethod(_typeCache, containingTypeName, returnType, name, arguments, offset);
+                }
+            }
         }
     }
 
@@ -73,23 +70,13 @@ namespace GTASDK.Generator
 
     public abstract class Method : IFixedEmittableMember
     {
-        public virtual string Name { get; protected set; }
-        public virtual CompositeType ReturnType { get; protected set; }
-        public virtual IReadOnlyList<ParserArgument> Arguments { get; protected set; }
-        public virtual Visibility Visibility { get; protected set; } = Visibility.@public;
+        public string Name { get; }
+        public CompositeType ReturnType { get; }
+        public IReadOnlyList<ParserArgument> Arguments { get; }
+        public Visibility Visibility { get; protected set; } = Visibility.@public;
 
-        public abstract string Emit();
-    }
-
-    public sealed class InstanceMethod : Method
-    {
-        public string ContainingType { get; }
-        public uint Offset { get; }
-
-        public InstanceMethod(TypeCache typeCache, string containingType, string returnType, string name, IEnumerable<string> arguments, uint offset)
+        protected Method(TypeCache typeCache, string returnType, string name, IEnumerable<string> arguments)
         {
-            Offset = offset;
-            ContainingType = containingType;
             Name = name;
             ReturnType = new CompositeType(typeCache, returnType);
             Arguments = arguments.Select(arg =>
@@ -101,58 +88,145 @@ namespace GTASDK.Generator
             }).ToArray();
         }
 
-        public override string Emit()
+        public abstract string Emit();
+        public abstract string EmitHook();
+    }
+
+    public class InstanceMethod : Method
+    {
+        public string ContainingType { get; }
+        public uint Offset { get; }
+        protected string DelegateName => $"{ContainingType}__{Name}";
+
+        public InstanceMethod(TypeCache typeCache, string containingType, string returnType, string name, IEnumerable<string> arguments, uint offset)
+            : base(typeCache, returnType, name, arguments)
         {
-            var condensedArguments = Arguments.Select(argument =>
+            Offset = offset;
+            ContainingType = containingType;
+        }
+
+        protected IEnumerable<string> SerializeArguments()
+        {
+            foreach (var argument in Arguments)
             {
                 if (argument.Type.TryGet(out var type))
                     if (argument.Type.IsRef)
-                        return type.ArgumentTemplate.Argument($"ref {argument.Type.CsharpName}", $"{argument.Name}");
+                        yield return type.ArgumentTemplate.Argument($"ref {argument.Type.CsharpName}", $"{argument.Name}");
                     else
-                        return type.ArgumentTemplate.Argument(argument.Type.CsharpName, argument.Name);
-                if (argument.Type.IsPointer)
-                    return Types.Pointer.ArgumentTemplate.Argument("IntPtr", argument.Name);
+                        yield return type.ArgumentTemplate.Argument(argument.Type.CsharpName, argument.Name);
+                else if (argument.Type.IsPointer)
+                    yield return Types.Pointer.ArgumentTemplate.Argument("IntPtr", argument.Name);
+                else
+                    throw new ArgumentException($"Did not find valid type mapping for argument {argument.Type.OriginalName} {argument.Name}", nameof(argument));
+            }
+        }
 
-                throw new ArgumentException($"Did not find valid type mapping for argument {argument.Type.OriginalName} {argument.Name}", nameof(argument));
-            }).ToArray();
+        protected IEnumerable<string> SerializeArgumentPassing()
+        {
+            foreach (var argument in Arguments)
+            {
+                if (argument.Type.TryGet(out var type))
+                    if (argument.Type.IsRef)
+                        yield return type.ArgumentTemplate.Call($"{argument.Type.CsharpName}", $"ref {argument.Name}");
+                    else
+                        yield return type.ArgumentTemplate.Call(argument.Type.CsharpName, argument.Name);
+                else if (argument.Type.IsPointer)
+                    yield return Types.Pointer.ArgumentTemplate.Call("IntPtr", argument.Name);
+                else
+                    throw new ArgumentException($"Did not find valid type mapping for argument {argument.Type.OriginalName} {argument.Name}", nameof(argument));
+            }
+        }
+
+        public override string Emit()
+        {
+            var condensedArguments = SerializeArguments().ToArray();
 
             var condensedArgumentsWithThisArg = condensedArguments.Prepend($"{ContainingType} thisArg");
 
-            var callArguments = Arguments.Select(argument =>
-            {
-                if (argument.Type.TryGet(out var type))
-                    if (argument.Type.IsRef)
-                        return type.ArgumentTemplate.Call($"{argument.Type.CsharpName}", $"ref {argument.Name}");
-                    else
-                        return type.ArgumentTemplate.Call(argument.Type.CsharpName, argument.Name);
-                if (argument.Type.IsPointer)
-                    return Types.Pointer.ArgumentTemplate.Call("IntPtr", argument.Name);
-
-                throw new ArgumentException($"Did not find valid type mapping for argument {argument.Type.OriginalName} {argument.Name}", nameof(argument));
-            }).Prepend("this").ToArray();
+            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
 
             var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
-
-            var delegateName = $"{ContainingType}__{Name}";
 
             return $@"
                 // Method: {Name}({string.Join(", ", originalSignature)})
 
                 [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-                public delegate {ReturnType.CsharpName} {delegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
-                private static readonly {delegateName} Call_{delegateName} = Memory.CallFunction<{delegateName}>()x{Offset:X});
-
-                public static partial class Hook
-                {{
-                    public static LocalHook {Name}({delegateName} functionDelegate) => Memory.Hook((IntPtr){Offset}, functionDelegate);
-                }}
+                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
+                private static readonly {DelegateName} Call_{DelegateName} = Memory.CallFunction<{DelegateName}>(0x{Offset:X});
 
                 public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
                 {{
-                    {(ReturnType.CsharpName != "void" ? "return " : "")}Call_{delegateName}({string.Join(", ", callArguments)});
+                    {(ReturnType.CsharpName != "void" ? "return " : "")}Call_{DelegateName}({string.Join(", ", callArguments)});
+                }}
+            ";
+        }
+
+        public override string EmitHook()
+        {
+            return $@"
+                public static LocalHook {Name}({DelegateName} functionDelegate) => Memory.Hook((IntPtr){Offset}, functionDelegate);
+            ";
+        }
+    }
+
+    public sealed class VirtualMethod : InstanceMethod
+    {
+        public VirtualMethod(TypeCache typeCache, string containingType, string returnType, string name, IEnumerable<string> arguments, uint index)
+            : base(typeCache, containingType, returnType, name, arguments, index)
+        {
+        }
+
+        public override string Emit()
+        {
+            var condensedArguments = SerializeArguments().ToArray();
+
+            var condensedArgumentsWithThisArg = condensedArguments.Prepend($"{ContainingType} thisArg");
+
+            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
+
+            var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
+
+            return $@"
+                // VTable method: {Name}({string.Join(", ", originalSignature)})
+
+                [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
+                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
+
+                public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
+                {{
+                    {(ReturnType.CsharpName != "void" ? "return " : "")}Memory.CallVirtualFunction<{DelegateName}>(_vtable.ToInt32(), {Offset})({string.Join(", ", callArguments)});
                 }}
             ";
         }
     }
 
+    public class PartialMethod : InstanceMethod
+    {
+        public PartialMethod(TypeCache typeCache, string containingType, string returnType, string name, IEnumerable<string> arguments, uint offset)
+            : base(typeCache, containingType, returnType, name, arguments, offset)
+        {
+        }
+
+        public override string Emit()
+        {
+            var condensedArguments = SerializeArguments().ToArray();
+                
+            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
+
+            var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
+
+            return $@"
+                // Partial method: {Name}({string.Join(", ", originalSignature)})
+
+                public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
+                {{
+                    {(ReturnType.CsharpName != "void" ? "return " : "")}{Name}Impl({string.Join(", ", callArguments)}, 0x{Offset:X});
+                }}
+            ";
+        }
+        public override string EmitHook()
+        {
+            return "";
+        }
+    }
 }

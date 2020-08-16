@@ -206,7 +206,16 @@ namespace GTASDK.Generator
             Methods = methods;
         }
 
-        public string GraphToString()
+        public IReadOnlyDictionary<string, string> GraphToString()
+        {
+            return new Dictionary<string, string>
+            {
+                [$"{Name}.Methods.cs"] = MethodsToString(),
+                [$"{Name}.Fields.cs"] = FieldsToString(),
+            };
+        }
+
+        private string MethodsToString()
         {
             return $@"using System;
 using System.Runtime.CompilerServices;
@@ -217,19 +226,34 @@ namespace {Namespace}
 {{
     public partial class {Name}
     {{
-        /// <summary>Size of this type in native code, in bytes.</summary>
-        public const uint _Size = 0x{Size:X}U;
+        public static class Hook
+        {{
+{HooksToString(4, 2)}
+        }}
 
 {MethodsToString(4, 2)}
+    }}
+}}";
+        }
 
-{StaticsToString(4, 2)}
+        private string FieldsToString()
+        {
+            return $@"using System;
+using System.Runtime.CompilerServices;
+
+namespace {Namespace}
+{{
+    public partial class {Name}
+    {{
+        /// <summary>Size of this type in native code, in bytes.</summary>
+        public const uint _Size = 0x{Size:X}U;
 
 {FieldsToString(4, 2)}
     }}
 }}";
         }
 
-        private string FieldsToString(int indentation, int indentLevel = 0)
+        private IEnumerable<string> InstanceFieldStrings()
         {
             var fieldsEmitted = new List<string>();
             uint offset = 0;
@@ -240,15 +264,26 @@ namespace {Namespace}
                 offset += field.Size;
             }
 
-            return RedoIndentation(indentation, indentLevel, fieldsEmitted);
+            return fieldsEmitted;
         }
 
-        private string StaticsToString(int indentation, int indentLevel = 0)
+        private IEnumerable<string> StaticFieldStrings()
         {
-            var staticsEmitted = Statics.Select(staticMember => staticMember.Emit());
-
-            return RedoIndentation(indentation, indentLevel, staticsEmitted);
+            return Statics.Select(staticMember => staticMember.Emit());
         }
+
+        private string FieldsToString(int indentation, int indentLevel = 0)
+        {
+            return RedoIndentation(indentation, indentLevel, InstanceFieldStrings().Concat(StaticFieldStrings()));
+        }
+
+        private string HooksToString(int indentation, int indentLevel = 0)
+        {
+            var methodsEmitted = Methods.Select(method => method?.EmitHook() ?? "");
+
+            return RedoIndentation(indentation, indentLevel, methodsEmitted);
+        }
+
         private string MethodsToString(int indentation, int indentLevel = 0)
         {
             var methodsEmitted = Methods.Select(method => method?.Emit() ?? "");

@@ -42,10 +42,10 @@ namespace GTASDK.Generator
                 throw new ArgumentException($"The directory at {options.OutputDirectory} does not exist or is not a directory", nameof(options.OutputDirectory));
             }
 
-            string GetOutputPathForInput(string file)
+            string GetOutputBasePathForInput(string file)
             {
                 var targetPath = Path.Combine(options.OutputDirectory, MakeRelative(file, options.TemplateDirectory));
-                return Path.ChangeExtension(targetPath, ".Partial.cs");
+                return Path.GetDirectoryName(targetPath);
             }
 
             foreach (var subdirectory in Directory.EnumerateDirectories(options.TemplateDirectory))
@@ -59,19 +59,25 @@ namespace GTASDK.Generator
                         case ".yml":
                             var type = generator.GetCachedTypeGraph(Path.GetFileNameWithoutExtension(file));
 
-                            var outputPath = GetOutputPathForInput(file);
+                            var outputBasePath = GetOutputBasePathForInput(file);
                             if (options.DryRun)
                             {
-                                Debug.WriteLine($"Writing the following text to {outputPath}, generated from {file}:");
-                                Debug.WriteLine(type.GraphToString());
+                                Debug.WriteLine($"Writing the following text to {outputBasePath}, generated from {file}:");
+                                foreach (var kvp in type.GraphToString())
+                                {
+                                    Debug.WriteLine($"{Path.Combine(outputBasePath, kvp.Key)}: {kvp.Value}");
+                                }
                             }
                             else
                             {
-                                Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? throw new InvalidOperationException($"Invalid output path: {outputPath}"));
-                                File.WriteAllText(outputPath, type.GraphToString());
+                                Directory.CreateDirectory(Path.GetDirectoryName(outputBasePath) ?? throw new InvalidOperationException($"Invalid output path: {outputBasePath}"));
+                                foreach (var kvp in type.GraphToString())
+                                {
+                                    File.WriteAllText(Path.Combine(outputBasePath, kvp.Key), kvp.Value);
+                                }
                             }
 
-                            Debug.WriteLine($"Processed {outputPath}");
+                            Debug.WriteLine($"Processed {outputBasePath}");
                             break;
                     }
                 }

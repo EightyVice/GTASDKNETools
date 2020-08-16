@@ -72,7 +72,7 @@ methods:
   - [virtual, void, CreateRwObject, [], 5]
   - [virtual, void, DeleteRwObject, [], 6]
   - [virtual, CRect, GetBoundRect, [], 7]
-  - [partial, void, GetBoundRect, [CRect& result]] # 7
+  - [partial, void, GetBoundRect, [CRect& result], 7]
   - [virtual, void, ProcessControl, [], 8]
   - [virtual, void, ProcessCollision, [], 9]
   - [virtual, void, ProcessShift, [], 10]
@@ -94,7 +94,7 @@ methods:
   - [void, UpdateRpHAnim, [], 0x489330]
   - [void, UpdateRwFrame, [], 0x489360]
   - [void, GetBoundCentre, [CVector& result], 0x489380]
-  - [partial, CVector, GetBoundCentre, []] # 0x489380
+  - [partial, CVector, GetBoundCentre, [], 0x489380]
   # This isn't an instance method, it shouldn't go here
   #- [RpAtomic*, AtomicRemoveAnimFromSkinCB, [RpAtomic* atomic, void* callbackData], 0x489750]
   - [void, DetachFromRwObject, [], 0x489790]
