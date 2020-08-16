@@ -227,6 +227,24 @@ namespace GTASDK.Generator
                     AsGet = "Memory.ReadVector({0})",
                     AsSet = "Memory.WriteVector({0}, value)"
                 }
+            },
+            ["CVector2D"] = new BuiltinType
+            {
+                Size = sizeof(float) * 2,
+                Template =
+                {
+                    AsGet = "Memory.ReadVector2D({0})",
+                    AsSet = "Memory.WriteVector2D({0}, value)"
+                }
+            },
+            ["CRect"] = new BuiltinType
+            {
+                Size = sizeof(float) * 4,
+                Template =
+                {
+                    AsGet = "Memory.ReadRect({0})",
+                    AsSet = "Memory.WriteRect({0}, value)"
+                }
             }
         };
     }
