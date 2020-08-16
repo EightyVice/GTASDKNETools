@@ -294,8 +294,14 @@ namespace {Namespace}
         private static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)
         {
             var output = new StringBuilder();
-            foreach (var lines in stringComponents.Select(s => s.Split('\n').Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e))))
+            foreach (var str in stringComponents)
             {
+                if (string.IsNullOrWhiteSpace(str))
+                {
+                    continue;
+                }
+
+                var lines = str.Split('\n').Select(e => e.Trim()).Where(e => !string.IsNullOrEmpty(e));
                 foreach (var line in lines)
                 {
                     if (line.EndsWith("}"))
