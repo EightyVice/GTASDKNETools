@@ -215,8 +215,8 @@ namespace GTASDK.Generator
         public override string Emit()
         {
             var condensedArguments = SerializeArguments().ToArray();
-                
-            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
+
+            var callArguments = SerializeArgumentPassing().Append($"0x{Offset:X}").ToArray();
 
             var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
 
@@ -225,7 +225,7 @@ namespace GTASDK.Generator
 
                 public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
                 {{
-                    {(ReturnType.CsharpName != "void" ? "return " : "")}{Name}Impl({string.Join(", ", callArguments)}, 0x{Offset:X});
+                    {(ReturnType.CsharpName != "void" ? "return " : "")}{Name}Impl({string.Join(", ", callArguments)});
                 }}
             ";
         }
