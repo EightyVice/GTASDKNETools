@@ -198,6 +198,11 @@ namespace GTASDK.Generator
                 }}
             ";
         }
+
+        public override string EmitHook()
+        {
+            return "";
+        }
     }
 
     public class PartialMethod : InstanceMethod
