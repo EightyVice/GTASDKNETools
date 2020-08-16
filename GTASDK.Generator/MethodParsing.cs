@@ -164,7 +164,7 @@ namespace GTASDK.Generator
         public override string EmitHook()
         {
             return $@"
-                public static LocalHook {Name}({DelegateName} functionDelegate) => Memory.Hook((IntPtr){Offset}, functionDelegate);
+                public static LocalHook {Name}({DelegateName} functionDelegate) => Memory.Hook((IntPtr)0x{Offset:X}, functionDelegate);
             ";
         }
     }
