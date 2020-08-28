@@ -8,11 +8,11 @@ using SharpYaml.Serialization;
 
 namespace GTASDK.Generator
 {
-    public sealed class MethodParsing
+    public sealed class InstanceMethodParsing
     {
         private readonly TypeCache _typeCache;
 
-        public MethodParsing(TypeCache typeCache)
+        public InstanceMethodParsing(TypeCache typeCache)
         {
             _typeCache = typeCache;
         }

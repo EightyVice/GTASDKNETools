@@ -30,6 +30,7 @@ namespace GTASDK.Generator
                 .WithParsed(RunWithOptions)
                 .WithNotParsed(HandleParseError);
         }
+        
         private static void RunWithOptions(Options options)
         {
             if (!Directory.Exists(options.TemplateDirectory))

@@ -7,29 +7,29 @@ using System.Threading.Tasks;
 namespace GTASDK.Generator
 {
     /// <summary>
-    /// Parses static fields into <see cref="StaticMember"/> instances.
+    /// Parses static fields into <see cref="StaticField"/> instances.
     /// </summary>
-    internal sealed class StaticParsing
+    internal sealed class StaticFieldParsing
     {
         private readonly TypeCache _typeCache;
 
-        public StaticParsing(TypeCache typeCache)
+        public StaticFieldParsing(TypeCache typeCache)
         {
             _typeCache = typeCache;
         }
 
         /// <summary>
-        /// Parses a <see cref="StaticMember"/> from a YAML field definition.
+        /// Parses a <see cref="StaticField"/> from a YAML field definition.
         /// </summary>
-        /// <param name="list">A tuple of [C++ type, field name, field address]</param>
-        /// <returns>Parsed <see cref="StaticMember"/> instance</returns>
-        public StaticMember ParseDefinition((string type, string name, uint address) list)
+        /// <param name="signature">A tuple of [C++ type, field name, field address]</param>
+        /// <returns>Parsed <see cref="StaticField"/> instance</returns>
+        public StaticField ParseDefinition((string type, string name, uint address) signature)
         {
-            return new StaticMember(_typeCache, list.type, list.name, list.address);
+            return new StaticField(_typeCache, signature.type, signature.name, signature.address);
         }
     }
 
-    public sealed class StaticMember : IFixedEmittableMember
+    public sealed class StaticField : IFixedEmittableMember
     {
         private readonly TypeCache _typeCache;
         public string Type { get; }
@@ -38,7 +38,7 @@ namespace GTASDK.Generator
         private ParserType ParserType => _typeCache[Type];
         public Visibility Visibility => Visibility.@public;
 
-        public StaticMember(TypeCache typeCache, string type, string name, uint address)
+        public StaticField(TypeCache typeCache, string type, string name, uint address)
         {
             Type = type;
             Name = name;
@@ -52,8 +52,8 @@ namespace GTASDK.Generator
                 // static {Type} at 0x{Address:X}
                 public static {ParserType.TypeMapsTo ?? Type} {Name}
                 {{
-                    {FieldParsing.PropModifiers} get => {ParserType.Template.Get($"0x{Address:X}")};
-                    {FieldParsing.PropModifiers} set => {ParserType.Template.Set($"0x{Address:X}")};
+                    {InstanceFieldParsing.PropModifiers} get => {ParserType.Template.Get($"0x{Address:X}")};
+                    {InstanceFieldParsing.PropModifiers} set => {ParserType.Template.Set($"0x{Address:X}")};
                 }}
             ";
         }

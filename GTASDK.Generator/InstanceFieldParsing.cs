@@ -9,12 +9,12 @@ using YamlNode = SharpYaml.Model.YamlNode;
 
 namespace GTASDK.Generator
 {
-    public sealed class FieldParsing
+    public sealed class InstanceFieldParsing
     {
         private readonly TypeCache _typeCache;
         internal const string PropModifiers = @"[MethodImpl(MethodImplOptions.AggressiveInlining)]";
 
-        public FieldParsing(TypeCache typeCache)
+        public InstanceFieldParsing(TypeCache typeCache)
         {
             _typeCache = typeCache;
         }
@@ -126,8 +126,8 @@ namespace GTASDK.Generator
             return $@"
                 {Visibility} IntPtr {Name}
                 {{
-                    {FieldParsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    {FieldParsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    {InstanceFieldParsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    {InstanceFieldParsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -176,8 +176,8 @@ namespace GTASDK.Generator
                 return $@"
                     {Visibility} Span<{Type.CsharpName}> {Name}
                     {{
-                        {FieldParsing.PropModifiers} get => Memory.GetSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
-                        {FieldParsing.PropModifiers} set => Memory.WriteSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
+                        {InstanceFieldParsing.PropModifiers} get => Memory.GetSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value});
+                        {InstanceFieldParsing.PropModifiers} set => Memory.WriteSpan<{Type.CsharpName}>(BaseAddress + 0x{offset:X}, {InlineArrayLength.Value}, value);
                     }}
                 ";
             }
@@ -191,8 +191,8 @@ namespace GTASDK.Generator
                         // {Type} at offset 0x{offset:X}
                         {Visibility} IntPtr {Name}
                         {{
-                            {FieldParsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
-                            {FieldParsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
+                            {InstanceFieldParsing.PropModifiers} get => {Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}")};
+                            {InstanceFieldParsing.PropModifiers} set => {Types.Pointer.Template.Set($"BaseAddress + 0x{offset:X}")};
                         }}
                     ";
                 }
@@ -201,8 +201,8 @@ namespace GTASDK.Generator
                     // {Type} at offset 0x{offset:X}
                     {Visibility} {Type.CsharpName} {Name}
                     {{
-                        {FieldParsing.PropModifiers} get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
-                        {FieldParsing.PropModifiers} set => throw new InvalidOperationException(""NOT DONE YET"");
+                        {InstanceFieldParsing.PropModifiers} get => {type.Template.Get(Types.Pointer.Template.Get($"BaseAddress + 0x{offset:X}"))};
+                        {InstanceFieldParsing.PropModifiers} set => throw new InvalidOperationException(""NOT DONE YET"");
                     }}
                 ";
             }
@@ -211,8 +211,8 @@ namespace GTASDK.Generator
                 // {Type} at offset 0x{offset:X}
                 {Visibility} {Type.CsharpName} {Name}
                 {{
-                    {FieldParsing.PropModifiers} get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
-                    {FieldParsing.PropModifiers} set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
+                    {InstanceFieldParsing.PropModifiers} get => {ParserType.Template.Get($"BaseAddress + 0x{offset:X}")};
+                    {InstanceFieldParsing.PropModifiers} set => {ParserType.Template.Set($"BaseAddress + 0x{offset:X}")};
                 }}
             ";
         }
@@ -276,8 +276,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} bool {name}
                         {{
-                            {FieldParsing.PropModifiers} get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
-                            {FieldParsing.PropModifiers} set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
+                            {InstanceFieldParsing.PropModifiers} get => Memory.ReadBit(BaseAddress + 0x{offset:X}, {bitOffset});
+                            {InstanceFieldParsing.PropModifiers} set => Memory.WriteBit(BaseAddress + 0x{offset:X}, {bitOffset}, value);
                         }}
                     ");
                 }
@@ -286,8 +286,8 @@ namespace GTASDK.Generator
                     sb.Append($@"
                         {Visibility} {ParserType.TypeMapsTo ?? Type} {name}
                         {{
-                            {FieldParsing.PropModifiers} get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
-                            {FieldParsing.PropModifiers} set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            {InstanceFieldParsing.PropModifiers} get => {ParserType.BitsTemplate.Get($"BaseAddress + 0x{offset:X}", bitOffset, length)};
+                            {InstanceFieldParsing.PropModifiers} set => {ParserType.BitsTemplate.Set($"BaseAddress + 0x{offset:X}", bitOffset, length)};
                         }}
                     ");
                 }

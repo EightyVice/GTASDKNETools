@@ -49,15 +49,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="StaticMethodParsing.cs" />
     <Compile Include="Members.cs" />
     <Compile Include="Cli.cs" />
     <Compile Include="Serializers\Extensions.cs" />
-    <Compile Include="FieldParsing.cs" />
+    <Compile Include="InstanceFieldParsing.cs" />
     <Compile Include="Generator.cs" />
-    <Compile Include="MethodParsing.cs" />
+    <Compile Include="InstanceMethodParsing.cs" />
     <Compile Include="Serializers\PrimitiveSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StaticParsing.cs" />
+    <Compile Include="StaticFieldParsing.cs" />
     <Compile Include="TypeCache.cs" />
     <Compile Include="Serializers\ValueTupleSerializer.cs" />
     <Compile Include="Serializers\YamlNodeSerializer.cs" />
@@ -68,6 +69,7 @@
     <None Include="packages.config" />
     <None Include="Templates\ViceCity\CEntity.yml" />
     <None Include="Templates\ViceCity\CPopulation.yml" />
+    <None Include="Templates\ViceCity\ePedType.yml" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -2,13 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.SqlServer.Server;
-using SharpYaml;
 using SharpYaml.Model;
 using SharpYaml.Serialization;
 using Path = System.IO.Path;
@@ -22,9 +18,10 @@ namespace GTASDK.Generator
 
         private readonly IDictionary<string, TypeGraph> _typeGraphCache = new Dictionary<string, TypeGraph>();
         private readonly TypeCache _typeCache;
-        private readonly FieldParsing _fieldParsing;
-        private readonly StaticParsing _staticParsing;
-        private readonly MethodParsing _methodParsing;
+        private readonly StaticFieldParsing _staticFieldParsing;
+        private readonly StaticMethodParsing _staticMethodParsing;
+        private readonly InstanceFieldParsing _instanceFieldParsing;
+        private readonly InstanceMethodParsing _instanceMethodParsing;
 
         internal static SerializerSettings SerializerSettings { get; } = new SerializerSettings();
         internal static Serializer Serializer { get; }
@@ -42,9 +39,10 @@ namespace GTASDK.Generator
         {
             _rootDirectory = rootDirectory;
             _typeCache = new TypeCache(this);
-            _fieldParsing = new FieldParsing(_typeCache);
-            _staticParsing = new StaticParsing(_typeCache);
-            _methodParsing = new MethodParsing(_typeCache);
+            _instanceFieldParsing = new InstanceFieldParsing(_typeCache);
+            _staticFieldParsing = new StaticFieldParsing(_typeCache);
+            _instanceMethodParsing = new InstanceMethodParsing(_typeCache);
+            _staticMethodParsing = new StaticMethodParsing(_typeCache);
         }
 
         public TypeGraph GetCachedTypeGraph(string name)
@@ -73,17 +71,30 @@ namespace GTASDK.Generator
             [DefaultValue(null)]
             public int PresetSize { get; set; }
 
-            [YamlMember("fields")]
+            [YamlMember("enum_type")]
             [DefaultValue(null)]
-            public List<YamlNode> FieldDefinitions { get; set; }
+            public string EnumType { get; set; }
+
+            [YamlMember("enum")]
+            [DefaultValue(null)]
+            public List<(string name, long value)> EnumDefinitions { get; set; }
 
             [YamlMember("static")]
             [DefaultValue(null)]
-            public List<(string type, string name, uint address)> StaticDefinitions { get; set; }
+            public List<(string type, string name, uint address)> StaticFieldDefinitions { get; set; }
+
+            [YamlMember("static_methods")]
+            [DefaultValue(null)]
+            public List<(string returnType, string name, string[] arguments, uint offset)> StaticMethodDefinitions { get; set; }
+
+            [YamlMember("fields")]
+            [DefaultValue(null)]
+            public List<YamlNode> InstanceFieldDefinitions { get; set; }
 
             [YamlMember("methods")]
             [DefaultValue(null)]
             public List<YamlSequence> InstanceMethodDefinitions { get; set; }
+
         }
 
         public TypeGraph GetTypeGraph(string typeName, string input)
@@ -91,49 +102,63 @@ namespace GTASDK.Generator
             Debug.WriteLine($"Processing type {typeName} in module {Path.GetFileName(_rootDirectory)}");
             var structure = Serializer.Deserialize<TypeGraphModel>(input);
 
-            var fields = new List<Field>();
-            uint offset = 0;
-            if (structure.FieldDefinitions != null)
+            if (structure.EnumType != null)
             {
-                foreach (var entry in structure.FieldDefinitions)
+                return new EnumTypeGraph(structure.Namespace, typeName, new CompositeType(_typeCache, structure.EnumType), structure.EnumDefinitions);
+            }
+
+            var staticFields = new List<StaticField>();
+            if (structure.StaticFieldDefinitions != null)
+            {
+                foreach (var entry in structure.StaticFieldDefinitions)
+                {
+                    staticFields.Add(_staticFieldParsing.ParseDefinition(entry));
+                }
+            }
+
+            var staticMethods = new List<StaticMethod>();
+            if (structure.StaticMethodDefinitions != null)
+            {
+                foreach (var entry in structure.StaticMethodDefinitions)
+                {
+                    staticMethods.Add(_staticMethodParsing.ParseMethod(typeName, entry));
+                }
+            }
+
+            var instanceFields = new List<Field>();
+            uint offset = 0;
+            if (structure.InstanceFieldDefinitions != null)
+            {
+                foreach (var entry in structure.InstanceFieldDefinitions)
                 {
                     Field entryField;
 
                     switch (entry)
                     {
                         case YamlValue val:
-                            entryField = _fieldParsing.ParseStringDescriptor(val.Value);
+                            entryField = _instanceFieldParsing.ParseStringDescriptor(val.Value);
                             break;
                         case YamlSequence seq:
-                            entryField = _fieldParsing.ParseRegularField(seq);
+                            entryField = _instanceFieldParsing.ParseRegularField(seq);
                             break;
                         case YamlMapping mapping:
-                            entryField = _fieldParsing.ParseComplexField(mapping.ToObjectX<Dictionary<ComplexFieldType, YamlSequence>>());
+                            entryField = _instanceFieldParsing.ParseComplexField(mapping.ToObjectX<Dictionary<ComplexFieldType, YamlSequence>>());
                             break;
                         default:
                             throw new ArgumentException($"Unrecognized entry type {entry}");
                     }
 
-                    fields.Add(entryField);
+                    instanceFields.Add(entryField);
                     offset += entryField.Size;
                 }
             }
 
-            var statics = new List<StaticMember>();
-            if (structure.StaticDefinitions != null)
-            {
-                foreach (var entry in structure.StaticDefinitions)
-                {
-                    statics.Add(_staticParsing.ParseDefinition(entry));
-                }
-            }
-
-            var methods = new List<Method>();
+            var instanceMethods = new List<Method>();
             if (structure.InstanceMethodDefinitions != null)
             {
                 foreach (var entry in structure.InstanceMethodDefinitions)
                 {
-                    methods.Add(_methodParsing.ParseMethod(typeName, entry));
+                    instanceMethods.Add(_instanceMethodParsing.ParseMethod(typeName, entry));
                 }
             }
 
@@ -143,7 +168,7 @@ namespace GTASDK.Generator
                 Debug.WriteLine($"Size of {typeName} is 0x{size:X}, expected 0x{structure.PresetSize:X}");
             }
 
-            return new TypeGraph(structure.Namespace, typeName, size, statics, fields, methods);
+            return new TypeGraph(structure.Namespace, typeName, size, staticFields, staticMethods, instanceFields, instanceMethods);
         }
     }
 
@@ -187,26 +212,28 @@ namespace GTASDK.Generator
         private string _call;
     }
 
-    public sealed class TypeGraph
+    public class TypeGraph
     {
         public string Namespace { get; }
         public string Name { get; }
         public uint Size { get; }
-        public IList<StaticMember> Statics { get; }
-        public IList<Field> Fields { get; }
-        public IList<Method> Methods { get; }
+        public IList<StaticField> StaticFields { get; }
+        public IList<StaticMethod> StaticMethods { get; }
+        public IList<Field> InstanceFields { get; }
+        public IList<Method> InstanceMethods { get; }
 
-        public TypeGraph(string typeNamespace, string name, uint size, IList<StaticMember> statics, IList<Field> fields, IList<Method> methods)
+        public TypeGraph(string typeNamespace, string name, uint size, IList<StaticField> staticFields, IList<StaticMethod> staticMethods, IList<Field> instanceFields, IList<Method> instanceMethods)
         {
             Namespace = typeNamespace;
             Name = name;
             Size = size;
-            Statics = statics;
-            Fields = fields;
-            Methods = methods;
+            StaticFields = staticFields;
+            StaticMethods = staticMethods;
+            InstanceFields = instanceFields;
+            InstanceMethods = instanceMethods;
         }
 
-        public IReadOnlyDictionary<string, string> GraphToString()
+        public virtual IReadOnlyDictionary<string, string> GraphToString()
         {
             return new Dictionary<string, string>
             {
@@ -258,7 +285,7 @@ namespace {Namespace}
             var fieldsEmitted = new List<string>();
             uint offset = 0;
 
-            foreach (var field in Fields)
+            foreach (var field in InstanceFields)
             {
                 fieldsEmitted.Add(field.Emit(offset));
                 offset += field.Size;
@@ -269,7 +296,7 @@ namespace {Namespace}
 
         private IEnumerable<string> StaticFieldStrings()
         {
-            return Statics.Select(staticMember => staticMember.Emit());
+            return StaticFields.Select(staticMember => staticMember.Emit());
         }
 
         private string FieldsToString(int indentation, int indentLevel = 0)
@@ -279,19 +306,19 @@ namespace {Namespace}
 
         private string HooksToString(int indentation, int indentLevel = 0)
         {
-            var methodsEmitted = Methods.Select(method => method?.EmitHook() ?? "");
+            var methodsEmitted = InstanceMethods.Select(method => method?.EmitHook() ?? "");
 
             return RedoIndentation(indentation, indentLevel, methodsEmitted);
         }
 
         private string MethodsToString(int indentation, int indentLevel = 0)
         {
-            var methodsEmitted = Methods.Select(method => method?.Emit() ?? "");
+            var methodsEmitted = InstanceMethods.Select(method => method?.Emit() ?? "");
 
             return RedoIndentation(indentation, indentLevel, methodsEmitted);
         }
 
-        private static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)
+        protected static string RedoIndentation(int indentation, int indentLevel, IEnumerable<string> stringComponents)
         {
             var output = new StringBuilder();
             foreach (var str in stringComponents)
@@ -321,6 +348,40 @@ namespace {Namespace}
             }
 
             return output.ToString().TrimEnd();
+        }
+    }
+
+    public class EnumTypeGraph : TypeGraph
+    {
+        public CompositeType EnumType { get; }
+        public IEnumerable<(string name, long value)> EnumElements { get; }
+
+        public EnumTypeGraph(string typeNamespace, string name, CompositeType enumType, IEnumerable<(string name, long value)> enumElements)
+            : base(typeNamespace, name, enumType.BackingType.Size, Array.Empty<StaticField>(), Array.Empty<StaticMethod>(), Array.Empty<Field>(), Array.Empty<Method>())
+        {
+            EnumType = enumType;
+            EnumElements = enumElements;
+        }
+
+        public override IReadOnlyDictionary<string, string> GraphToString()
+        {
+            return new Dictionary<string, string>
+            {
+                [$"{Name}.cs"] = $@"namespace {Namespace}
+{{
+    public enum {Name} : {EnumType.CsharpName}
+    {{
+{EnumMembersToString(4, 2)}
+    }}
+}}",
+            };
+        }
+
+        private string EnumMembersToString(int indentation, int indentLevel)
+        {
+            var enumMembersEmitted = EnumElements.Select(el => $"{el.name} = {el.value}");
+
+            return RedoIndentation(indentation, indentLevel, enumMembersEmitted);
         }
     }
 }
