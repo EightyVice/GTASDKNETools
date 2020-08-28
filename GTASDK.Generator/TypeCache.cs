@@ -28,6 +28,15 @@ namespace GTASDK.Generator
                 return true;
             }
 
+            try
+            {
+                outType = _ownTypeCache[typeName] = new CustomType(_generator.GetCachedTypeGraph(typeName));
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+            }
+
             outType = default;
             return false;
         }

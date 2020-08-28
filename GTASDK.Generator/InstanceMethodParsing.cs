@@ -121,6 +121,22 @@ namespace GTASDK.Generator
             }
         }
 
+        protected IEnumerable<string> SerializeDelegateArguments() // ATM the only special case: Pointers are IntPtr on delegates, real type on other methods.
+        {
+            foreach (var argument in Arguments)
+            {
+                if (argument.Type.IsPointer)
+                    yield return Types.Pointer.ArgumentTemplate.Argument("IntPtr", argument.Name);
+                else if (argument.Type.TryGet(out var type))
+                    if (argument.Type.IsRef)
+                        yield return type.ArgumentTemplate.Argument($"ref {argument.Type.CsharpName}", $"{argument.Name}");
+                    else
+                        yield return type.ArgumentTemplate.Argument(argument.Type.CsharpName, argument.Name);
+                else
+                    throw new ArgumentException($"Did not find valid type mapping for argument {argument.Type.OriginalName} {argument.Name}", nameof(argument));
+            }
+        }
+
         protected IEnumerable<string> SerializeArgumentPassing()
         {
             foreach (var argument in Arguments)
@@ -139,11 +155,11 @@ namespace GTASDK.Generator
 
         public override string Emit()
         {
-            var condensedArguments = SerializeArguments().ToArray();
+            var condensedArguments = SerializeArguments();
 
-            var condensedArgumentsWithThisArg = condensedArguments.Prepend($"{ContainingType} thisArg");
+            var delegateArguments = SerializeDelegateArguments().Prepend($"{ContainingType} thisArg");
 
-            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
+            var callArguments = SerializeArgumentPassing().Prepend("this");
 
             var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
 
@@ -151,7 +167,7 @@ namespace GTASDK.Generator
                 // Method: {Name}({string.Join(", ", originalSignature)})
 
                 [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
+                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", delegateArguments)});
                 private static readonly {DelegateName} Call_{DelegateName} = Memory.CallFunction<{DelegateName}>(0x{Offset:X});
 
                 public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
@@ -178,11 +194,11 @@ namespace GTASDK.Generator
 
         public override string Emit()
         {
-            var condensedArguments = SerializeArguments().ToArray();
+            var condensedArguments = SerializeArguments();
 
-            var condensedArgumentsWithThisArg = condensedArguments.Prepend($"{ContainingType} thisArg");
+            var delegateArguments = SerializeDelegateArguments().Prepend($"{ContainingType} thisArg");
 
-            var callArguments = SerializeArgumentPassing().Prepend("this").ToArray();
+            var callArguments = SerializeArgumentPassing().Prepend("this");
 
             var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
 
@@ -190,7 +206,7 @@ namespace GTASDK.Generator
                 // VTable method: {Name}({string.Join(", ", originalSignature)})
 
                 [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", condensedArgumentsWithThisArg)});
+                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", delegateArguments)});
 
                 public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
                 {{

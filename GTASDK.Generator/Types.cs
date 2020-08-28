@@ -22,7 +22,7 @@ namespace GTASDK.Generator
                 BitsTemplate =
                 {
                     AsGet = "Memory.ReadBitsInt8({0}, {1}, {2})",
-                    AsSet = @"throw new InvalidOperationException(""NOT DONE YET"")"
+                    AsSet = "Memory.WriteBitsInt8({0}, {1}, {2}, value)"
                 }
             };
 
@@ -281,11 +281,17 @@ namespace GTASDK.Generator
                 AsGet = $"new {_typeGraph.Name}({{0}})",
                 AsSet = $"Memory.CopyRegion({{0}}, value.BaseAddress, {_typeGraph.Name}._Size)"
             };
-            ArgumentTemplate = new CallTemplate
-            {
-                AsArgument = "{0} {1}",
-                AsCall = "{1}.BaseAddress"
-            };
+            ArgumentTemplate = typeGraph is EnumTypeGraph
+                ? new CallTemplate
+                {
+                    AsArgument = "{0} {1}",
+                    AsCall = "{1}"
+                }
+                : new CallTemplate
+                {
+                    AsArgument = "{0} {1}",
+                    AsCall = "(IntPtr){1}.BaseAddress"
+                };
         }
     }
 

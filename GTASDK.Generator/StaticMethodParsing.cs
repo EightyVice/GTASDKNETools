@@ -28,8 +28,9 @@ namespace GTASDK.Generator
 
         public override string Emit()
         {
-            var condensedArguments = SerializeArguments().ToArray();
-            var callArguments = SerializeArgumentPassing().ToArray();
+            var condensedArguments = SerializeArguments();
+            var delegateArguments = SerializeDelegateArguments();
+            var callArguments = SerializeArgumentPassing();
 
             var originalSignature = Arguments.Select(e => $"{e.Type.OriginalName} {e.Name}");
 
@@ -37,10 +38,10 @@ namespace GTASDK.Generator
                 // Method: {Name}({string.Join(", ", originalSignature)})
 
                 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", condensedArguments)});
+                public delegate {ReturnType.CsharpName} {DelegateName}({string.Join(", ", delegateArguments)});
                 private static readonly {DelegateName} Call_{DelegateName} = Memory.CallFunction<{DelegateName}>(0x{Offset:X});
 
-                public {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
+                public static {ReturnType.CsharpName} {Name}({string.Join(", ", condensedArguments)})
                 {{
                     {(ReturnType.CsharpName != "void" ? "return " : "")}Call_{DelegateName}({string.Join(", ", callArguments)});
                 }}
