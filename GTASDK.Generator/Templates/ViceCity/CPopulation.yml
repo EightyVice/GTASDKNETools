@@ -27,7 +27,7 @@ static:
   - [unsigned int, NumMiamiViceCops, 0x9753FC]
 static_methods:
   - [CPed*, AddDeadPedInFrontOfCar, [CVector& posn,CVehicle* vehicle], 0x53B180]
-  - [CPed*, AddPed, [ePedType pedType,uint modelIndex,CVector& posn,int], 0x53B600]
+  - [CPed*, AddPed, [ePedType pedType,uint modelIndex,CVector& posn,int arg3], 0x53B600]
   - [CPed*, AddPedInCar, [CVehicle* vehicle,bool driver], 0x53A8A0]
   - [void, AddToPopulation, [float arg0, float arg1, float arg2, float arg3], 0x53BA80]
   - [bool, CanJeerAtStripper, [int modelIndex], 0x53A670]
