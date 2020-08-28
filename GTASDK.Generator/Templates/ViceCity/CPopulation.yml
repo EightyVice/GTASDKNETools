@@ -37,7 +37,7 @@ static_methods:
   - [int, ChooseCivilianOccupation, [int arg0], 0x53B070]
   - [int, ChooseNextCivilianOccupation, [int arg0], 0x53AFD0]
   - [void, ConvertAllObjectsToDummyObjects, [], 0x53D430]
-  - [void, ConvertToDummyObject, [CObject* object], 0x53D290]
+  - [void, ConvertToDummyObject, [CObject* aobject], 0x53D290]
   - [void, ConvertToRealObject, [CDummyObject* dummyObject], 0x53D340]
   - [void, GeneratePedsAtStartOfGame, [], 0x53E3E0]
   - [void, Initialise, [], 0x53EAF0]
