@@ -67,6 +67,8 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="Templates\ViceCity\CVehicle.yml" />
+    <None Include="Templates\ViceCity\CPed.yml" />
     <None Include="Templates\ViceCity\CEntity.yml" />
     <None Include="Templates\ViceCity\CPopulation.yml" />
     <None Include="Templates\ViceCity\ePedType.yml" />
