@@ -306,14 +306,14 @@ namespace {Namespace}
 
         private string HooksToString(int indentation, int indentLevel = 0)
         {
-            var methodsEmitted = InstanceMethods.Select(method => method?.EmitHook() ?? "");
+            var methodsEmitted = InstanceMethods.Concat(StaticMethods).Select(method => method?.EmitHook() ?? "");
 
             return RedoIndentation(indentation, indentLevel, methodsEmitted);
         }
 
         private string MethodsToString(int indentation, int indentLevel = 0)
         {
-            var methodsEmitted = InstanceMethods.Select(method => method?.Emit() ?? "");
+            var methodsEmitted = InstanceMethods.Concat(StaticMethods).Select(method => method?.Emit() ?? "");
 
             return RedoIndentation(indentation, indentLevel, methodsEmitted);
         }
@@ -379,9 +379,9 @@ namespace {Namespace}
 
         private string EnumMembersToString(int indentation, int indentLevel)
         {
-            var enumMembersEmitted = EnumElements.Select(el => $"{el.name} = {el.value}");
+            var enumMembersEmitted = EnumElements.Select(el => $"{el.name} = {el.value},");
 
-            return RedoIndentation(indentation, indentLevel, enumMembersEmitted);
+            return string.Join("\n", enumMembersEmitted.Select(e => new string(' ', indentation * indentLevel) + e));
         }
     }
 }
